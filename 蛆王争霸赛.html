@@ -1,0 +1,3462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>蛆王争霸赛 · 记分台</title>
+<style>
+:root{
+  --bg:#0a0c11; --panel:#12161f; --panel2:#171c27; --line:#252c3a;
+  --txt:#e6ebf2; --dim:#8b97a8; --acc:#a3f14b; --acc2:#b06bff;
+  --red:#ff4d5e; --gold:#ffcf4d; --blue:#4dc8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #1a2a10 0%, transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, #1e1230 0%, transparent 55%),
+    var(--bg);
+  color:var(--txt); font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+  min-height:100vh; padding:18px 16px 80px; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto}
+header{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:26px;letter-spacing:1px;line-height:1.1}
+h1 .em{color:var(--acc);text-shadow:0 0 22px rgba(163,241,75,.45)}
+.sub{color:var(--dim);font-size:12.5px;margin-top:6px}
+.spacer{flex:1}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:13px;display:flex;align-items:center;gap:7px}
+.chip input{background:transparent;border:0;color:var(--txt);font-size:13px;font-family:inherit;outline:none;width:120px}
+.boardhd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:13px}
+.boardhd .hint{font-size:12px}
+nav{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+nav button{background:transparent;border:0;color:var(--dim);padding:10px 16px;font-size:14px;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:.15s}
+nav button:hover{color:var(--txt)}
+nav button.on{color:var(--acc);border-bottom-color:var(--acc)}
+/* 算法说明抽屉：从右侧滑出，不打断当前页面 */
+.mask{position:fixed;inset:0;background:rgba(4,6,10,.62);opacity:0;pointer-events:none;
+  transition:opacity .22s;z-index:90}
+.mask.on{opacity:1;pointer-events:auto}
+/* 居中浮框，不是贴边抽屉 */
+.drawer{position:fixed;top:50%;left:50%;width:min(860px,92vw);height:min(80vh,860px);
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  display:flex;flex-direction:column;z-index:91;
+  transform:translate(-50%,-50%) scale(.94);opacity:0;pointer-events:none;
+  transition:opacity .18s ease,transform .24s cubic-bezier(.22,.8,.3,1);
+  box-shadow:0 30px 90px rgba(0,0,0,.65)}
+.drawer.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+.drawer-hd{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;
+  border-bottom:1px solid var(--line);background:var(--panel2);
+  border-radius:14px 14px 0 0;font-weight:600;font-size:15px}
+.drawer-x{background:transparent;border:1px solid var(--line);color:var(--dim);width:30px;height:30px;
+  border-radius:8px;font-size:18px;line-height:1;cursor:pointer;font-family:inherit;transition:.15s}
+.drawer-x:hover{color:var(--txt);border-color:var(--dim)}
+.drawer-bd{flex:1;overflow-y:auto;padding:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 small{color:var(--dim);font-weight:400;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--dim);font-weight:500;font-size:12px;padding:0 4px 8px;white-space:nowrap}
+td{padding:2px 3px}
+input,select{
+  width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+  color:var(--txt);padding:7px 8px;font-size:13px;font-family:inherit;outline:none;transition:.12s;
+}
+input:focus,select:focus{border-color:var(--acc);box-shadow:0 0 0 2px rgba(163,241,75,.12)}
+input.num{text-align:right;font-variant-numeric:tabular-nums}
+select{
+  cursor:pointer;appearance:none;padding-right:20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b97a8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 6px center;
+}
+/* 账号管理 */
+.chipx{background:transparent;border:1px solid var(--line);border-radius:6px;color:#6f7c8d;
+  cursor:pointer;font-family:inherit;font-size:12px;line-height:1;padding:3px 6px;transition:.15s}
+.chipx:hover{color:var(--red);border-color:var(--red)}
+.acctrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 2px;border-top:1px solid var(--line);font-size:13px}
+.acctrow:first-child{border-top:0}
+.acctrow .an{font-weight:600;color:var(--txt);min-width:150px}
+.acctrow .am{color:var(--dim);font-size:12px;flex:1;min-width:190px}
+.acctrow .btn{padding:6px 11px;font-size:12px}
+.undobar{background:rgba(163,241,75,.07);border:1px solid rgba(163,241,75,.32);
+  border-radius:9px;padding:10px 12px;margin-bottom:12px;display:flex;
+  align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.undobar .btn{padding:6px 11px;font-size:12px}
+/* 免责卡步进器：−［数字］+，自己调，不写死 */
+.cardstep{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:8px;padding:3px 5px}
+.cardstep .cbtn{width:24px;height:24px;font-size:16px}
+.cnum-in{width:44px;text-align:center;background:transparent;border:0;padding:2px 0;
+  color:#7fd4ff;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.cnum-in:focus{box-shadow:none;border:0}
+.cnum-in::-webkit-outer-spin-button,.cnum-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cnum-in{-moz-appearance:textfield}
+.ignrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 2px;
+  border-top:1px dashed var(--line);font-size:12.5px;color:var(--dim)}
+.ignrow .inm{color:var(--txt)}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:8px;font-size:13.5px;cursor:pointer;font-family:inherit;transition:.15s}
+.btn:hover{border-color:#3a4557;background:#1c2230}
+.btn:disabled,.btn[disabled]{opacity:.35;cursor:not-allowed}
+.btn:disabled:hover,.btn[disabled]:hover{border-color:var(--line);background:var(--panel2)}
+.btn.pri{background:linear-gradient(180deg,#b6ff5c,#83d426);border:0;color:#0a1500;font-weight:700}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger:hover{border-color:var(--red);color:var(--red)}
+.btnline{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+textarea{width:100%;min-height:88px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px;font-size:12.5px;font-family:Consolas,monospace;resize:vertical;outline:none}
+textarea:focus{border-color:var(--acc)}
+.hint{color:var(--dim);font-size:12px;line-height:1.7}
+.hint code{background:#1c2230;padding:1px 5px;border-radius:4px;color:var(--acc);font-size:11.5px}
+/* 结果条 */
+.resrow{display:grid;grid-template-columns:200px 1fr 78px 46px;gap:10px;align-items:center;padding:6px 0;border-top:1px dashed #1e2532}
+.resrow .tierc{font-size:11.5px;text-align:right;white-space:nowrap;opacity:.92}
+.resrow .nm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resrow .nm b{font-weight:600}
+.resrow .nm em{color:var(--dim);font-style:normal;font-size:11.5px;margin-left:5px}
+.bar{height:9px;background:#1a2030;border-radius:5px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+.resrow .sc{text-align:right;font-size:13px;font-variant-numeric:tabular-nums;font-weight:600}
+.resrow.savedrow{opacity:.72}
+.resrow.savedrow .nm b{color:#9fd7ff}
+.top1 .nm{color:var(--red)}
+/* 榜单 */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.crown{display:flex;gap:16px;align-items:center;background:linear-gradient(120deg,#1f2b10,#171c27 60%);border:1px solid #3d5220;border-radius:14px;padding:18px 20px}
+.crown.thigh{background:linear-gradient(120deg,#0d2a24,#171c27 60%);border-color:#1f5c47}
+.crown.thigh .who{color:#5ce8b0}
+.crown.thigh .meta b{color:#5ce8b0}
+.crown .icon{font-size:38px;filter:drop-shadow(0 0 14px rgba(255,207,77,.5))}
+.crown .who{font-size:24px;font-weight:800;color:var(--gold);letter-spacing:.5px;display:flex;align-items:center;flex-wrap:wrap}
+.crown .badge{display:inline-block;font-size:15px;font-weight:700;padding:5px 13px;border-radius:20px;
+  margin-right:11px;letter-spacing:0;background:rgba(255,207,77,.14);color:#ffcf4d;border:1px solid rgba(255,207,77,.32)}
+.crown.thigh .badge{background:rgba(92,232,176,.14);color:#5ce8b0;border-color:rgba(92,232,176,.32)}
+.crown .meta{color:var(--dim);font-size:12.5px;margin-top:6px;line-height:1.85}
+.crown .idle{font-size:16px;color:var(--dim);font-weight:400}
+.rank td{padding:8px 6px;border-top:1px solid #1e2532}
+.rank tr:first-child td{border-top:0}
+.rank .p1 td{background:rgba(255,77,94,.06)}
+.pos{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;border-radius:5px;font-size:11.5px;font-weight:700;background:#1e2532;color:var(--dim)}
+tr.p1 .pos{background:var(--red);color:#fff}
+.cardctl{display:inline-flex;align-items:center;gap:3px}
+.cbtn{width:21px;height:21px;line-height:1;border-radius:5px;border:1px solid #2a3242;background:#1a2030;
+  color:#8b97a8;cursor:pointer;font-size:14px;font-family:inherit;padding:0;transition:.12s}
+.cbtn:hover{border-color:#4dc8ff;color:#7fd4ff;background:rgba(77,200,255,.14)}
+.cbtn:active{transform:scale(.92)}
+.cnum{font-size:11.5px;color:#4d5766;min-width:32px;text-align:center;font-variant-numeric:tabular-nums}
+.cnum.has{color:#7fd4ff}
+.saved{color:#7fd4ff;font-size:12px;margin-left:14px}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:20px;background:#1e2532;color:var(--dim);margin-right:5px;white-space:nowrap}
+.tag.g{color:var(--acc);background:rgba(163,241,75,.1)}
+.tag.p{color:var(--acc2);background:rgba(176,107,255,.12)}
+.tag.r{color:var(--red);background:rgba(255,77,94,.12)}
+.tag.y{color:var(--gold);background:rgba(255,207,77,.12)}
+.num-mono{font-variant-numeric:tabular-nums}
+.matchblk{border-top:1px solid #1e2532;padding:12px 0 4px}
+.matchblk:first-child{border-top:0;padding-top:0}
+.matchhd{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.matchhd b{color:var(--txt)}
+.matchhd span{color:var(--dim);font-size:12px}
+.win{color:var(--acc)} .lose{color:var(--red)}
+.who-line{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;margin:8px 0 2px;line-height:1.7}
+.who-line .w{color:#ff8c96}
+.who-line .t{color:#5ce8b0}
+.who-line .w b,.who-line .t b{font-weight:700}
+.mdetail{margin-top:6px}
+.unq{margin-top:12px;border-top:1px dashed #243040;padding-top:8px}
+.unq summary{cursor:pointer;color:#6f7c8d;font-size:12.5px;list-style:none;padding:5px 0;outline:none}
+.unq summary::-webkit-details-marker{display:none}
+.unq summary:before{content:'▸ ';color:#3f4857}
+.unq[open] summary:before{content:'▾ '}
+.unq summary:hover{color:#e6ebf2}
+.unq .unqTip{color:#4a5568;font-size:11.5px;margin-left:6px}
+.unqtbl{margin-top:4px;opacity:.86}
+.unqtbl th{font-size:11.5px}
+.mdetail summary{cursor:pointer;color:#6f7c8d;font-size:12px;padding:5px 0;outline:none;list-style:none}
+.mdetail summary::-webkit-details-marker{display:none}
+.mdetail summary:before{content:'▸ ';color:#3f4857}
+.mdetail[open] summary:before{content:'▾ '}
+.mdetail summary:hover{color:#e6ebf2}
+.dtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums}
+.dtbl th{color:#6f7c8d;font-weight:500;padding:6px;text-align:right;border-bottom:1px solid #2a3242;white-space:nowrap}
+.dtbl td{padding:6px;text-align:right;border-bottom:1px solid #1a2029;white-space:nowrap}
+.dtbl th:nth-child(-n+4),.dtbl td:nth-child(-n+4){text-align:left}
+/* 维度分解：单局表与汇总表共用 */
+.dtbltitle{margin:16px 0 4px;font-size:12px;color:#7f8ca0;line-height:1.7}
+.dtbltitle b{color:var(--txt)}
+.dimtbl th,.dimtbl td{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+/* 「换算」列：起点分 + 区间内涨的分，如 70+8.2 */
+.dimtbl td.conv{color:#b9c4d4;background:rgba(92,232,176,.045)}
+.dimtbl td.conv span{color:#5ce8b0;font-size:11px}
+.dimtbl td.bad{color:#ff8c96;font-weight:600}
+.dimtbl td.good{color:#5ce8b0;font-weight:600}
+.dimtbl td.zero{color:#565f6d}
+.dimtbl td.sub{color:#c9d4e2}
+.dimtbl td.pen{color:#ff9a3d}
+.dimtbl tr.r1 td{background:rgba(255,77,94,.05)}
+.dimtbl .nm{font-family:inherit;font-weight:600;color:var(--txt)}
+.dimtbl th.arrow{width:34px;text-align:center;color:#3f4857;font-weight:400}
+/* 维度贡献汇总可折叠 */
+/* 换算拆解：把「基准 + 分差」两个数摊成算式 */
+.convbox{margin-top:12px;border:1px solid rgba(92,232,176,.18);border-radius:8px;background:rgba(92,232,176,.025);padding:9px 12px 11px}
+.convbox>summary{cursor:pointer;font-size:12.5px;color:#8b95a5;line-height:1.8;list-style:none;user-select:none}
+.convbox>summary::-webkit-details-marker{display:none}
+.convbox>summary::before{content:'▾';display:inline-block;width:15px;color:var(--acc)}
+.convbox:not([open])>summary::before{content:'▸'}
+.convbox>summary b{color:var(--txt);font-size:13px}
+.cvsec{font-size:12.5px;line-height:1.8;margin:6px 0 4px}
+.cvtab{font-size:11.5px;margin:4px 0}
+.cvtab th{white-space:nowrap;color:#7f8ca0;font-weight:500}
+.cvtab td{border-color:rgba(255,255,255,.045)}
+.cvtab td:nth-child(n+2){white-space:nowrap}
+.cvcalc{font-size:12px;line-height:2;margin-top:6px;color:#b9c4d4}
+.cvcalc b{color:#8b95a5}
+.dimsbox{margin-top:14px;border-top:1px solid var(--line);padding-top:11px}
+.dimsbox>summary{cursor:pointer;font-size:12px;color:#7f8ca0;line-height:1.75;list-style:none;padding:2px 2px 6px;user-select:none}
+.dimsbox>summary::-webkit-details-marker{display:none}
+.dimsbox>summary::before{content:'▸';display:inline-block;width:15px;color:var(--acc);transition:.15s}
+.dimsbox[open]>summary::before{content:'▾'}
+.dimsbox>summary:hover b{color:var(--acc)}
+.dimsbox>summary b{color:var(--txt);font-size:12.5px}
+.dsum{color:#6f7c8d}
+.empty{text-align:center;color:var(--dim);padding:40px 0;font-size:13px}
+.hidden{display:none!important}
+footer{text-align:center;color:#3f4857;font-size:11.5px;margin-top:24px;line-height:1.8}
+@media(max-width:820px){
+  .duo{grid-template-columns:1fr}
+  body{padding:12px 8px 60px}
+  .card{padding:12px}
+  table{font-size:12px}
+  input,select{padding:6px 5px;font-size:12px}
+  th{font-size:11px}
+  .resrow{grid-template-columns:120px 1fr 62px 38px;gap:6px}
+  h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>🪱 蛆王争霸赛 <span class="em">记分台</span></h1>
+      <div class="sub">队内归一化 · 六维蛆度 · 纯数据审判</div>
+    </div>
+    <div class="spacer"></div>
+  </header>
+
+  <nav>
+    <button data-tab="board" class="on">今日榜单</button>
+    <button data-tab="period">周期汇总</button>
+    <button data-tab="data">数据</button>
+  </nav>
+
+
+  <!-- ============ 榜单 ============ -->
+  <section id="tab-board">
+    <div class="card" id="riotCard">
+      <h2>拉取对局 <small>直接读 League 客户端的本地记录，不需要 API Key；已导入的局自动跳过</small></h2>
+      <div class="btnline" style="margin-top:0">
+        <label class="chip">📅 拉取日期 <select id="pullDate" style="width:186px;background-color:transparent;border:0;padding-right:18px"></select></label>
+        <button class="btn pri" id="btnRiot">⚡ 从客户端拉取对局</button>
+        <button class="btn" id="btnPullAll" title="把客户端能翻到的全部对局按日期一次导入，不用一天天点">📦 一键全量拉取（所有日期）</button>
+        <span class="hint" id="riotStat">检测中…</span>
+        <span class="hint" id="riotAcct"></span>
+      </div>
+      <p class="hint" id="adminTip" style="display:none;color:#ff9a3d;margin-top:6px">
+        当前以普通用户运行。若提示“取不到客户端信息”，请关掉程序，右键 exe 选「以管理员身份运行」再试。
+      </p>
+      <details class="dimsbox" style="margin-top:8px">
+        <summary>用法说明 · 拉不到数据怎么办</summary>
+        <p class="hint" style="margin-top:8px" id="riotHint">
+          需要 League 客户端开着。<b style="color:var(--txt)">按天拉</b>用上面的日期下拉；
+          <b style="color:var(--txt)">一键全量</b>会把客户端能翻到的所有日期一次导入，
+          <b style="color:var(--txt)">已导入的局自动跳过</b>，局数多时要等一两分钟，别关窗口。
+        </p>
+        <div class="btnline" style="margin-top:8px">
+          <button class="btn ghost" id="btnPickDir" title="自动检测不到游戏目录时，手动指定一次，之后会记住">指定目录</button>
+          <button class="btn ghost" id="btnDiag" title="拉不到数据时点这个，把取数每一环的结果摊开">🔍 诊断</button>
+          <button class="btn ghost" id="btnAdmin" style="display:none" title="读不到客户端命令行时，提权往往就能解决">🔑 以管理员重启</button>
+        </div>
+      </details>
+    </div>
+    <div class="boardhd">
+      <label class="chip" title="不同账号的战绩各自独立，切到谁的账号就看谁的榜">👤 查看账号
+        <select id="ownerIn" style="width:168px;background-color:transparent;border:0;padding-right:18px"></select>
+        <button type="button" class="chipx" id="btnDelOwner" title="删除当前查看的账号及其全部对局（可撤销）">🗑</button>
+      </label>
+      <label class="chip">📅 查看日期
+        <select id="dateIn" style="width:170px;background-color:transparent;border:0;padding-right:18px"></select>
+      </label>
+      <div class="chip" id="statChip">0 局 · 0 人</div>
+      <button class="btn ghost" id="btnRefresh" title="立刻从客户端重新拉一次这一天的对局，不用确认">🔄 立即刷新</button>
+      <button class="btn ghost" id="btnRules" title="分数怎么算的、档位怎么切，都在这里">📖 算法说明</button>
+      <span class="hint" id="liveStat"></span>
+    </div>
+    <div class="duo">
+      <div class="crown thigh" id="thighBox"></div>
+      <div class="crown" id="crownBox"></div>
+    </div>
+    <div class="card" id="yestCard" style="display:none">
+      <h2>免责卡补偿 <small>昨日蛆王今天请大家喝饮料，给他补几张卡</small></h2>
+      <div id="yestCrown"></div>
+    </div>
+    <div class="card">
+      <h2>今日总榜 <small>局均分 = 各局蛆分均值；满 2 局才进榜参评</small></h2>
+      <div id="rankBox"></div>
+      <div id="dimSummary"></div>
+    </div>
+    <div class="card">
+      <h2>单局明细</h2>
+      <div id="matchList"></div>
+    </div>
+    <div class="btnline">
+      <button class="btn pri" id="btnReport">生成蛆王战报图</button>
+      <button class="btn" id="btnCopyText">复制战报文本</button>
+    </div>
+  </section>
+
+  <!-- ============ 周期汇总（本周 / 本月） ============ -->
+  <section id="tab-period" class="hidden">
+    <div class="card">
+      <h2>周期汇总 <small>本周 / 本月的总账：谁是这段时间的蛆王，谁是大腿</small></h2>
+      <div class="btnline" style="margin-top:0">
+        <button class="btn pri" id="pWeek" data-period="week" title="按周看，保持当前浏览位置">📆 按周</button>
+        <button class="btn ghost" id="pMonth" data-period="month" title="按月看，保持当前浏览位置">🗓 按月</button>
+        <span class="chip" style="gap:4px">
+          <button class="btn ghost" id="pPrev" data-shift="-1">‹ 上一周</button>
+          <b id="pLabel" style="padding:0 6px;font-variant-numeric:tabular-nums">—</b>
+          <button class="btn ghost" id="pNext" data-shift="1">下一周 ›</button>
+        </span>
+        <button class="btn ghost" id="pBack" data-shift="0" title="回到当前所在的周 / 月">⏭ 回到本周</button>
+        <span class="hint" id="periodStat"></span>
+      </div>
+      <p class="hint" style="margin-top:10px">
+        按<b style="color:var(--txt)">天逐个结算</b>再累加：免责卡不会跨天串用，每天该免谁照旧按当天的卡池算。<br>
+        加冕口径与今日榜完全一致——<b style="color:var(--txt)">区间局均蛆分最高者当蛆王、最低者当大腿</b>，满
+        <b style="color:var(--txt)">2 局</b>才参评（未满的收进折叠区）。<br>
+        区间以当前查看日期为锚点：翻到某天再切到这里，看的就是<b style="color:var(--txt)">那一天所在</b>的周 / 月。
+      </p>
+    </div>
+    <div class="duo">
+      <div class="crown thigh" id="pThighBox"></div>
+      <div class="crown" id="pCrownBox"></div>
+    </div>
+    <div class="card">
+      <h2 id="pRankTitle">区间总榜</h2>
+      <div id="pExcludeBar"></div>
+      <div id="pRankBox"></div>
+    </div>
+    <div class="card">
+      <h2>逐日蛆王 <small>这段时间每天谁戴帽子，点「看这天」可跳到当天榜单</small></h2>
+      <div id="pDailyBox"></div>
+    </div>
+  </section>
+
+  <!-- ============ 规则 ============ -->
+  <!-- 算法说明：右侧抽屉，不再占一个独立页签 -->
+  <div class="mask" id="rulesMask"></div>
+  <aside class="drawer" id="rulesDrawer" aria-hidden="true">
+    <div class="drawer-hd">
+      <span>📖 算法说明</span>
+      <button class="drawer-x" id="btnRulesClose" title="关闭（Esc）">×</button>
+    </div>
+    <div class="drawer-bd">
+      <div class="card" style="margin:0">
+      <h2>蛆度算法（六维 · 队内 z-score · 定位加权）</h2>
+      <p class="hint" style="margin-bottom:14px">
+        核心原则：<b style="color:var(--txt)">不跨队比绝对值，只在同一局 5 人内部排名</b>。因为大乱斗里坦克 8 万承伤、法师 4 万输出，绝对值毫无可比性。
+      </p>
+      <table style="font-size:13px">
+        <thead><tr><th style="width:170px">维度</th><th style="width:60px">基准权重</th><th>判定逻辑</th></tr></thead>
+        <tbody>
+          <tr><td>输出贡献</td><td class="num-mono">28%</td><td class="hint">英雄伤害占全队比重，低于队内均值 = 蛆</td></tr>
+          <tr><td>参团率</td><td class="num-mono">24%</td><td class="hint">(击杀+助攻) 占全队比重，团战缺席 = 蛆</td></tr>
+          <tr><td>死亡密度</td><td class="num-mono">16%</td><td class="hint">死亡 ÷ 分钟数，越高越蛆</td></tr>
+          <tr><td>经济转化</td><td class="num-mono">15%</td><td class="hint">输出占比 ÷ 经济占比，吃钱不出力 = 蛆</td></tr>
+          <tr><td>承伤贡献</td><td class="num-mono">12%</td><td class="hint">承受伤害占全队比重，<b style="color:var(--txt)">扛得越多越不算蛆</b>（本版新增）</td></tr>
+          <tr><td>功能性</td><td class="num-mono">5%</td><td class="hint">治疗/护盾占比，辅助向的贡献</td></tr>
+        </tbody>
+      </table>
+      <p class="hint" style="margin-top:10px">
+        基准权重只是参照，<b style="color:var(--txt)">实际算分用下面的定位权重</b>。
+      </p>
+      <p class="hint" style="margin-top:10px;padding:10px 12px;background:rgba(255,207,77,.07);border-left:3px solid #ffcf4d;border-radius:6px">
+        <b style="color:#ffcf4d">z 值做饱和压缩（本版新增）：</b>
+        5 个人里必然有第一名和最后一名，而 20 万次模拟显示——<b style="color:var(--txt)">「排第一」的 z 天然就有 +1.37，
+        「排最后」天然就是 −1.37</b>，这跟他打得好不好没关系，只是名次的副产物。
+        直接线性放大，等于把名次硬翻译成几十分的差距：一局五个人数据只差 3%，分数也能拉开 40 分。<br>
+        所以对每个 z 过一道 tanh：<b style="color:var(--txt)">中段几乎不动（0.5 → 0.45），两端压掉三分之一（1.4 → 0.85）</b>。
+        明显更强的人依然分更高，但不会一个人把全表拉爆。<br>
+        效果：<b style="color:var(--txt)">局内最高与最低的分差中位数，从 64 分收到 32 分</b>；
+        五人数据几乎一样的局，分差只有 17 分，也不再有人被硬顶进最高档。
+      </p>
+      <h2 style="margin-top:20px">定位修正</h2>
+      <p class="hint">同一项数据对不同定位意义不同，按定位重分配权重（每行合计 100%）：</p>
+      <table style="font-size:12.5px;margin-top:8px">
+        <thead><tr><th>定位</th><th>输出</th><th>参团</th><th>死亡</th><th>转化</th><th>承伤</th><th>功能</th></tr></thead>
+        <tbody>
+          <tr><td>坦</td><td class="num-mono">16%</td><td class="num-mono">22%</td><td class="num-mono" style="color:var(--acc)">8%</td><td class="num-mono">13%</td><td class="num-mono" style="color:var(--acc)">24%</td><td class="num-mono">17%</td></tr>
+          <tr><td>战</td><td class="num-mono">25%</td><td class="num-mono">22%</td><td class="num-mono">14%</td><td class="num-mono">17%</td><td class="num-mono">16%</td><td class="num-mono">6%</td></tr>
+          <tr><td>法</td><td class="num-mono">33%</td><td class="num-mono">21%</td><td class="num-mono">16%</td><td class="num-mono">15%</td><td class="num-mono">9%</td><td class="num-mono">6%</td></tr>
+          <tr><td>射</td><td class="num-mono">37%</td><td class="num-mono">21%</td><td class="num-mono">16%</td><td class="num-mono">17%</td><td class="num-mono">7%</td><td class="num-mono">2%</td></tr>
+          <tr><td>辅</td><td class="num-mono">12%</td><td class="num-mono">33%</td><td class="num-mono" style="color:var(--acc)">10%</td><td class="num-mono">10%</td><td class="num-mono">14%</td><td class="num-mono">21%</td></tr>
+        </tbody>
+      </table>
+      <p class="hint" style="margin-top:10px;padding:10px 12px;background:rgba(163,241,75,.06);border-left:3px solid var(--acc);border-radius:6px">
+        <b style="color:var(--acc)">为什么给坦位降死亡权重：</b>
+        坦克的活儿就是顶在前面挨打，<b style="color:var(--txt)">死亡是这份工作的成本，不是失误</b>。
+        所以才给坦位 24% 的承伤权重、只留 8% 给死亡；射手反过来，死一次就是全队输出断档。
+        同一张表套所有人，只会把敢开团的那个人判成蛆王。
+      </p>
+      <h2 style="margin-top:20px">暴毙惩罚（按定位打折）</h2>
+      <p class="hint">
+        <b style="color:var(--txt)">「暴毙」与「送头」说的是同一件事（死太多），只按更重的一条计，不再双罚</b>；
+        全部叠完后统一乘 0.7，并且<b style="color:var(--txt)">单局封顶 0.56</b>（约 13 分）——
+        实测出现过「六维贡献全 0、纯靠惩罚堆到 77 分」，必须有硬顶：<br>
+        · 死亡达门槛且时长 &lt; 15 分钟 → <b style="color:var(--red)">+0.56</b>（暴毙局，含同时送头）<br>
+        · 单局死亡达上限、但没到暴毙 → <b style="color:var(--red)">+0.42</b>（送头大师）<br>
+        · 击杀+助攻为 0 → <b style="color:var(--red)">+0.35</b>（全场隐身）<br>
+        · 输出占比低于队均一半（坦辅为 30%）→ <b style="color:var(--red)">+0.28</b>（输出缺席）<br>
+        并且<b style="color:var(--txt)">门槛和折扣都按定位走</b>：
+      </p>
+      <table style="font-size:12.5px;margin-top:8px">
+        <thead><tr><th>定位</th><th>暴毙门槛</th><th>送头门槛</th><th>惩罚折扣</th></tr></thead>
+        <tbody>
+          <tr><td>坦</td><td class="num-mono">≥ 10 死</td><td class="num-mono">≥ 13 死</td><td class="num-mono" style="color:var(--acc)">× 0.55</td></tr>
+          <tr><td>辅</td><td class="num-mono">≥ 9 死</td><td class="num-mono">≥ 13 死</td><td class="num-mono" style="color:var(--acc)">× 0.65</td></tr>
+          <tr><td>战</td><td class="num-mono">≥ 8 死</td><td class="num-mono">≥ 12 死</td><td class="num-mono">× 0.85</td></tr>
+          <tr><td>法 / 射</td><td class="num-mono">≥ 8 死</td><td class="num-mono">≥ 12 死</td><td class="num-mono">× 1.00</td></tr>
+        </tbody>
+      </table>
+      <p class="hint" style="margin-top:10px;padding:10px 12px;background:rgba(255,154,61,.07);border-left:3px solid #ff9a3d;border-radius:6px">
+        <b style="color:#ff9a3d">宽限不是白给的，得拿履职数据换：</b><br>
+        · <b style="color:var(--txt)">坦位</b>：承伤占比 ≥ 队伍均值的 85%，<b>并且</b>每死承伤 ≥ 队伍均值
+        （这条命确实换到了伤害）——只扛不换命的不算<br>
+        · <b style="color:var(--txt)">辅助</b>：参团率 ≥ 队伍均值（在开团、在跟团，不是躲着）<br>
+        任一条不满足，就按普通门槛、不打折。<b style="color:var(--txt)">「扛得多」「打得凶」不能当免死金牌。</b>
+      </p>
+      <h2 style="margin-top:20px">档位划分（按绝对分，不按名次）</h2>
+      <p class="hint" style="margin-bottom:10px">
+        分数换算分四步：① 六维加权贡献相加得「小计」，再加惩罚、减掉队均，
+        得到每个人<b style="color:var(--txt)">相对全队平均的偏离</b>（量级 ±1）；
+        ② 偏离查<b style="color:var(--txt)">换算尺子</b>得到「分差」——尺子中段等斜率、两端软饱和，
+        <b style="color:var(--txt)">整条尺子与这局打成什么样无关</b>；
+        ③ 按这一局整体打成什么样动态拟定<b style="color:var(--txt)">基准分</b>，不看排名，
+        而是把四项数据合成一个「惨烈度」：产出（伤害密度 45% + 经济密度 30% + 参战密度 25%）越低、
+        全队死亡密度越高，这局就越惨，基准越高。常态局基准 ≈ 50，全员血崩可到 66，全员神勇则低到 40；
+        ④ <b style="color:var(--acc)">蛆分 = 基准 + 分差</b>。<br>
+        <b style="color:var(--acc)">★ 基准只做最后这一次加法，不进尺子</b>：
+        旧版把基准塞进尺子的位置（反查锚点后平移全队），可尺子最左段斜率是中段的 2.5 倍，
+        于是同一份相对差距，在「打得好」的局被放大、在「打得烂」的局被压缩——
+        实测垫底者能因队友打得还不错多扣 30 分。现在同一份相对差距在任何局都换出同一份分差，
+        基准只决定「这局整条分数带从几分起算」。<br>
+        <b style="color:var(--txt)">注意</b>：惩罚是在对齐<b>之后</b>叠加的，
+        所以实际队均会比基准高几分（真实 96 局实测均值 +4.2、个别局 +9.8）——
+        基准是这局分数带的<b style="color:var(--txt)">下沿</b>，不是队均。
+        分差下端软饱和 −36、上端放到 +58：给「真·极端蛆」留出打到 90 分的空间，
+        普通对局仍落在 30~75。<br>
+        单项指标都会骗人——只看死亡会漏掉「全员猛发育但被抓崩」的局，
+        只看伤害会漏掉「互送乱斗」，所以惨烈度必须合并着看；
+        但这些区间与权重目前仍是<b style="color:var(--txt)">人工常数</b>，尚未用真实对局反标。<br>
+        现在按绝对分套档，<b style="color:var(--txt)">全队水平接近时，谁都进不了高档位</b>；
+        <b style="color:var(--txt)">最后一名也可能只是「算个人类」</b>，倒数第二名反而可能是「惊天大蛆」——
+        取决于他离开队伍平均水平有多远，不取决于他排第几。
+      </p>
+      <h2 style="margin-top:20px">明细表怎么读（为什么算出这个蛆分）</h2>
+      <p class="hint" style="margin-bottom:10px">
+        榜单下方「<b style="color:var(--txt)">维度贡献汇总</b>」和每局「<b style="color:var(--txt)">维度分解</b>」
+        用的是同一条加法链，从左到右每一步都能自己按计算器复算：<br>
+        <b style="color:var(--acc)">① 六维贡献</b>：输出 / 参团 / 死亡 / 转化 / 承伤 / 功能，
+        每项是「队内 z 值 × 该定位权重」，<b style="color:var(--txt)">正数偏蛆、负数偏大腿</b>；
+        六项直接相加 = <b>小计</b>。<br>
+        <b style="color:var(--acc)">② 对齐</b>：本局统一量，把队均对齐到 0，同一局每个人完全一样
+        （<b style="color:var(--txt)">基准不在这里参与</b>）。<br>
+        <b style="color:var(--acc)">③ 惩罚</b>：暴毙 / 送头<b style="color:var(--txt)">二选一</b>（死太多不双罚）、隐身、输出缺席；
+        叠完统一乘 0.7 并封顶 0.56。<br>
+        <b style="color:var(--acc)">④ 偏离</b> = 小计 + 对齐 + 惩罚，量级只有 ±1 左右，
+        所以前面的数字都是零点几。<br>
+        <b style="color:var(--acc)">⑤ 换算</b>：单元格 <span class="num-mono">46+10.8 → 57</span> 是<b style="color:var(--txt)">两个数</b>：
+        第一个 <b style="color:var(--txt)">46</b> = 本局基准分；第二个 <b style="color:var(--txt)">+10.8</b> = 偏离 +0.45 查换算尺子
+        （0→0、+0.50→+12，中段斜率 24 分/偏离，即 0.45×24）换出的分差；
+        <b style="color:var(--txt)">基准 + 分差 = 46 + 10.8 = 56.8 → 取整 57</b>。<br>
+        <b style="color:var(--acc)">⑥ 基准怎么来</b>：伤害 / 经济 / 参战 / 死亡四项密度先归一化，
+        产出 = 伤害×45% + 经济×30% + 参战×25%；惨烈度 = (1−产出)×60% + 死亡×40%；
+        基准 = 四舍五入(30 + 惨烈度×40)，钳在 40~74。它只决定整局分数带的位置，
+        <b style="color:var(--txt)">不影响任何两人的分差</b>。<br>
+        <b style="color:var(--acc)">★ 两个数都能逐步复算</b>：每局「维度分解」表下方新增「<b style="color:var(--txt)">换算拆解</b>」，
+        ① 列出四项密度的原始值、归一化区间、权重与加权，一直算到基准；
+        ② 逐人列出偏离落在尺子哪一段、插值算式和最终分差。表中数值保留 2~3 位小数，手算差 0.1 分属四舍五入。<br>
+        汇总表是各局的<b style="color:var(--txt)">局均</b>，「对齐」「基准」「分差」都取平均；
+        最右「局均蛆分」按榜单口径逐局取整后再平均，与「局均基准 + 局均分差」差 0.5 分内属正常。
+      </p>
+      <table style="font-size:13px">
+        <thead><tr><th style="width:96px">分数</th><th style="width:110px">档位</th><th>含义</th></tr></thead>
+        <tbody>
+          <tr><td class="num-mono">82 ~ 100</td><td style="color:#ff2d55;font-weight:600">神蛆化蝇</td><td class="hint">约 3%，挂机送头级别的表现，建议当场录屏</td></tr>
+          <tr><td class="num-mono">70 ~ 81</td><td style="color:#ff4d5e;font-weight:600">惊天大蛆</td><td class="hint">约 8%，够全队笑一个礼拜</td></tr>
+          <tr><td class="num-mono">60 ~ 69</td><td style="color:#ff7a3d;font-weight:600">正宗大蛆</td><td class="hint">约 16%，纯度很足，配方稳定</td></tr>
+          <tr><td class="num-mono">50 ~ 59</td><td style="color:#ffcf4d;font-weight:600">初具人形</td><td class="hint">约 26%，刚有点人样，还得再练</td></tr>
+          <tr><td class="num-mono">36 ~ 49</td><td style="color:#a3f14b;font-weight:600">算个人类</td><td class="hint">约 37%，存在感刚刚好，输了不背锅</td></tr>
+          <tr><td class="num-mono">0 ~ 35</td><td style="color:#4dc8ff;font-weight:600">全村希望</td><td class="hint">约 10%，全队续命全靠这位</td></tr>
+        </tbody>
+      </table>
+      <p class="hint" style="margin-top:12px;padding:10px 12px;background:rgba(163,241,75,.06);border-left:3px solid var(--acc);border-radius:6px">
+        <b style="color:var(--acc)">先说清楚：</b>这套评分是给朋友局<b style="color:var(--txt)">找乐子用的</b>，
+        不是用来评价谁的技术。大乱斗本来就靠抽英雄，抽到不合适的英雄数据就是难看，
+        跟你玩得好不好没多大关系。<br>
+        榜单可以争，帽子可以戴，<b style="color:var(--txt)">笑一笑就过去了，别真往心里去</b>。<br>
+        <b style="color:var(--txt)">时长不足 5 分钟的重开局 / 异常局不纳入统计</b>，数据太短没有参考价值。
+      </p>
+      <p class="hint" style="margin-top:10px">
+        统计口径：<b style="color:var(--txt)">「当蛆一次」= 该局蛆分全队最高</b>（本次修正前的旧口径是「≥72 分」，
+        但分数钝化后那样一天下来几乎全是 0，等于统计没在工作）；
+        <b style="color:var(--txt)">「当大腿一次」= 该局蛆分全队最低</b>。
+        每局各产生一次，被免责卡豁免的人不参与评比。
+      </p>
+      <h2 style="margin-top:20px">周期汇总（本周 / 本月）</h2>
+      <p class="hint">
+        「周期汇总」页签把一段时间（<b style="color:var(--txt)">本周从周一起</b> /
+        <b style="color:var(--txt)">本月从 1 号起</b>）的局合并成一张总账，回答「这段时间谁是蛆王、谁是大腿」。
+        口径与今日榜完全一致：<b style="color:var(--txt)">区间局均蛆分最高者当蛆王、最低者当大腿</b>，满 2 局才参评。<br>
+        · <b style="color:var(--txt)">按天逐个结算再累加</b>：免责卡每天各算各的，昨天的卡不会拿到今天用，
+        也不会跨天叠加免罪名额<br>
+        · <b style="color:var(--txt)">区间均分按各局加权</b>（等于把所有局的分数加起来除以计成绩局数），
+        不是「先算每天均分再平均」——后者会让只打一局的那天和打十局的那天权重一样<br>
+        · 「天数」是区间内参与过几天；只打一局的人照样收进折叠区，不参与排名与加冕<br>
+        · 首次进来时区间跟着<b style="color:var(--txt)">当前查看日期</b>走：在今日榜翻到某天再切过来，看的就是那天所在的周 / 月<br>
+        · <b style="color:var(--txt)">可以往前翻</b>：用「‹ 上一周 / 下一周 ›」看往周、往月，
+        翻到非当前段时区间标签会变橙，旁边出现「回到本周 / 本月」一键回位；<br>
+        · 翻页只改这个页签的范围，<b style="color:var(--txt)">不会动今日榜单的日期和当天的免责卡</b>；
+        没有「未来周 / 未来月」，翻到当前段就到底<br>
+        · 下方「逐日蛆王」列出这段时间每天的帽子归谁，点「看这天」直接跳到当天的榜<br>
+        · <b style="color:var(--txt)">剔除撞车的</b>：长周期里有人只打了两把、纯属碰巧同队，
+        在榜行末点 <b style="color:var(--txt)">✕</b> 就能把他从这周 / 这月的统计里摘出去；
+        只影响这一段那个账号，<b style="color:var(--txt)">原始对局与今日榜都不动</b>，
+        点上方他的名字可随时恢复
+      </p>
+      <h2 style="margin-top:20px">今日蛆王</h2>
+      <p class="hint"><b style="color:var(--txt)">局均蛆分最高者加冕</b>，<b style="color:var(--txt)">必须满 2 局</b>才有资格。
+        被免责卡免掉的局不计成绩，所以用卡会直接拉低他的均分，可能因此让出帽子。
+        <b style="color:var(--txt)">没满 2 局、或打的局全被免掉的人收进榜单下方的折叠区</b>，不参与排名与加冕——避免打一局就跑的人既躺赢又抢称号。<br>
+        榜单「当蛆 / 大腿」两列是<b style="color:var(--txt)">单局队内排名</b>的累计次数，只作统计；
+        加冕只看局均蛆分——否则会出现「分数全队最低却当蛆王」的荒唐结果。</p>
+      <h2 style="margin-top:20px">多账号互不干扰</h2>
+      <p class="hint">
+        同一台电脑换号登录时，<b style="color:var(--txt)">每个账号的战绩各自独立存档</b>，不会混进同一个榜。
+        榜单顶部「👤 查看账号」可以直接切换看谁的榜，<b style="color:var(--txt)">免责卡也按账号分开算</b>，
+        A 账号发的卡不会替 B 账号的人免罪。<br>
+        升级前导入、没记账号的旧对局会归到「<b style="color:var(--txt)">未标记账号</b>」一档，
+        既不消失，也不会算到任何新账号头上——想清掉就切到那一档，在历史里逐局删。
+      </p>
+      <h2 style="margin-top:20px">免责卡</h2>
+      <p class="hint">
+        在总榜「免责卡」一列用 <b style="color:#7fd4ff">+</b> 发一张、<b style="color:#7fd4ff">−</b> 收回一张，中间数字是「剩余 / 已发」。<br>
+        · 某人某局被判队内最蛆、且手里有卡 → 自动消耗一张，<b style="color:var(--txt)">该局蛆王顺延给下一位</b><br>
+        · <b style="color:var(--red)">全队最后一名不许被豁免</b>——否则这局就没有蛆王了，卡也白扔<br>
+        · 被豁免的那一局，<b style="color:var(--txt)">成绩整个不计</b>：分数、死亡、六维、当蛆次数都不算；
+        但<b style="color:var(--txt)">局数照算</b>——所以局均分会跟着降（这就是偏袒），也不会因为用卡掉出榜单<br>
+        · 本局蛆王顺延给下一位，不会出现「这局没人当蛆」<br>
+        · 用途：朋友局立的赌注——<b style="color:var(--txt)">当日蛆王第二天请大家喝饮料</b>；作为补偿，
+        第二天给他补几张免责卡。切到今天看榜时，榜单上方会单独出现一张「免责卡补偿」卡，
+        用 <b style="color:#7fd4ff">− / +</b> 或直接填数字调，<b style="color:var(--txt)">发几张自己定</b>，不会自动发；
+        改完下面的「今日总榜」会立刻按新卡数重算<br>
+        · 优先免掉他当天<b style="color:var(--txt)">分数最高的那一局</b>（都是最蛆才比先后），这样免完分数一定是往下走；
+        <b style="color:var(--txt)">改卡数会立刻重算当天全部对局</b>，不用刷新<br>
+        · 所以「今日蛆王」看的是<b style="color:var(--txt)">局均蛆分</b>：免掉最高分那局 → 均分下降 → 他可能因此让出帽子
+      </p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 数据 ============ -->
+  <section id="tab-data" class="hidden">
+    <div class="card">
+      <h2>存档</h2>
+      <p class="hint" style="margin-bottom:12px">数据存在浏览器 localStorage，换电脑/清缓存会丢，记得定期导出。</p>
+      <div class="btnline">
+        <button class="btn" id="btnExport">导出 JSON</button>
+        <button class="btn" id="btnImport">导入 JSON</button>
+        <input type="file" id="fileIn" accept=".json" class="hidden">
+        <button class="btn danger" id="btnWipeAll">清空全部数据</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>账号管理 <small>删除账号 = 连同它的全部对局、免责卡一起清掉</small></h2>
+      <p class="hint" style="margin-bottom:10px">
+        <b style="color:var(--txt)">只删本应用的本地记录，不影响游戏客户端里的账号。</b>
+        删掉后会留一份<b style="color:var(--txt)">撤销副本</b>，可一键恢复；被删的账号会暂时停用，
+        客户端仍登录它时<b style="color:var(--txt)">不会自动重建</b>，免得删了跟没删一样。
+        想重新记录，点下面的「恢复记录」，或直接点一次「从客户端拉取」。
+        换电脑/清缓存前记得先<b style="color:var(--txt)">导出 JSON</b>。
+      </p>
+      <div id="undoBar"></div>
+      <div id="acctList"></div>
+      <div id="ignoredList"></div>
+    </div>
+    <div class="card">
+      <h2>历史日期</h2>
+      <div id="histBox" class="hint">暂无</div>
+    </div>
+  </section>
+
+  <footer>
+    蛆王争霸赛记分台 <span style="color:#4a5568">v3.62</span> · 构建 2026-11-17 15:11 · 数据集本地保存不上传<br>
+    分数只对同一局内的 5 个人有意义，跨局对比仅作娱乐参考
+  </footer>
+</div>
+
+<script>
+/* ===================== 常量 ===================== */
+const LS_KEY = 'quwang_v2';
+/** 删除账号后留一份「撤销副本」，单独存、不进导出的 JSON，避免把已删数据悄悄带走 */
+const UNDO_KEY = 'quwang_undo_v1';
+const ROLES = ['坦','战','法','射','辅'];
+/* 六维定位权重，每行合计 100%。
+   承伤（taken）是"越扛越不蛆"的正面项，所以给坦/辅压了很大比重；
+   坦位死亡几乎不可避免，death 从 25% 砍到 10%，避免"扛了 8 万还因为死了 12 次被判蛆王"。 */
+const ROLE_W = {
+  '坦': {dmg:.16, kp:.22, death:.08, eff:.13, taken:.24, util:.17},
+  '战': {dmg:.25, kp:.22, death:.14, eff:.17, taken:.16, util:.06},
+  '法': {dmg:.33, kp:.21, death:.16, eff:.15, taken:.09, util:.06},
+  '射': {dmg:.37, kp:.21, death:.16, eff:.17, taken:.07, util:.02},
+  '辅': {dmg:.12, kp:.33, death:.10, eff:.10, taken:.14, util:.21},
+};
+
+/* 死亡惩罚的定位折扣：坦位死得多是职责，不能和射手同罪 */
+/* 死亡惩罚折扣：按"承伤职责"排成连续梯度，职责越重、死越情有可原。
+   坦 0.55 < 辅 0.65 < 战 0.85 < 法/射 1.0 */
+const PEN_SCALE = {'坦':.55, '辅':.65, '战':.85, '法':1.0, '射':1.0};
+
+/* 维度失效时的权重兜底：某项全队数据完全一样（比如治疗一栏全 0）就没法比较，
+   把它的权重转给同定位更该负责的那一项，而不是平均摊给所有人。
+   — 辅助的活儿本来就是治疗+参团，没治疗数据时转给参团最贴近真实贡献 */
+const DIM_FALLBACK = {
+  '辅': { util: 'kp' },
+  // 坦位刻意不设兜底：承伤缺失时若把 24% 转给「死亡」，等于放大坦最不该被罚的维度，
+  // 与「坦位死亡降权」的初衷冲突（实测老坦会从 57 分跳到 77 分）。走通用归一化即可。
+};
+
+/* ===== 分数标定表：相对偏离 → 相对基准的分差 =====
+   旧版把「整局 qRaw」丢进一张 0~100 的绝对刻度，基准通过 invScore(baseline)
+   把全队推到尺子的某一段。可尺子各段斜率差 2.5 倍（最左段 51 分/qRaw、
+   中段才约 20）：基准一挪，同一份相对差距就被放大或压缩。
+   实测基准 40~45 的局内跨度 P50 = 34，基准 56+ 只有 28；垫底者能被多砸 30 分。
+
+   v3.46 改成：尺子只认「个人相对全队平均偏离 x」，整条曲线与本局基准无关；
+   基准在最后做一次加法 —— 蛆分 = 基准 + 分差。
+   中段等斜率 24 分/x，两端渐缓做软饱和（最大 ±36 分），避免极端局轻易摸到 0 / 100。
+   锚点左右对称：偏蛆 0.5 与偏大腿 0.5 换出同样大小的分差，不偏袒任何一侧。
+   标定见 _过程文件/_tune_additive.js（2500 局网格搜索）。 */
+const SCORE_ANCHORS = [
+  // [相对偏离 x, 相对基准的分差]
+  [-2.40, -36],   // 下饱和：再差也不让分差无限扩大
+  [-1.60, -32],
+  [-1.00, -24],
+  [-0.50, -12],
+  [ 0.00,   0],   // 正好等于全队平均 → 恰好拿本局基准分
+  [ 0.50,  12],
+  // 上端收紧（原 1.00→24 / 1.60→32 / 2.40→36）：
+  // 真实 96 局的偏离值最大只有 1.8，按旧表要 1.9 才摸得到 82 分，
+  // 结果「神蛆化蝇」标称 3%、实测 0.2%（96 局只出 1 次）。
+  // 现在 1.40 就到 +46，回放后神蛆 3.1%、最高 92 分。
+  [ 1.00,  30],
+  [ 1.40,  46],
+  [ 1.90,  58],   // 上饱和
+];
+
+/** 相对偏离 → 分差：锚点间线性插值，超出两端取端点（软饱和） */
+function scoreDelta(x){
+  const A = SCORE_ANCHORS;
+  if(x <= A[0][0]) return A[0][1];
+  const last = A[A.length - 1];
+  if(x >= last[0]) return last[1];
+  for(let i = 0; i < A.length - 1; i++){
+    const x0 = A[i][0], d0 = A[i][1], x1 = A[i+1][0], d1 = A[i+1][1];
+    if(x >= x0 && x <= x1) return d0 + (d1 - d0) * (x - x0) / (x1 - x0);
+  }
+  return 0;
+}
+
+/** 相对偏离 → 蛆分。基准只在这里做一次加法，不进入换算曲线。 */
+function scoreOf(x, baseline){
+  const b = (baseline == null) ? 50 : baseline;
+  return Math.max(0, Math.min(100, Math.round(b + scoreDelta(x))));
+}
+
+/** scoreOf 的反函数：给目标分反查相对偏离（标定 / 测试用） */
+function invScore(s, baseline){
+  const b = (baseline == null) ? 50 : baseline;
+  const d = s - b;
+  const A = SCORE_ANCHORS;
+  if(d <= A[0][1]) return A[0][0];
+  const last = A[A.length - 1];
+  if(d >= last[1]) return last[0];
+  for(let i = 0; i < A.length - 1; i++){
+    const x0 = A[i][0], d0 = A[i][1], x1 = A[i+1][0], d1 = A[i+1][1];
+    if(d >= d0 && d <= d1) return x0 + (x1 - x0) * (d - d0) / (d1 - d0);
+  }
+  return 0;
+}
+
+/** x 落在尺子的哪一段（供悬停说明） */
+function scoreParts(x){
+  const A = SCORE_ANCHORS;
+  const first = A[0], last = A[A.length - 1];
+  if(x <= first[0]) return {q0:first[0], q1:first[0], s0:first[1], s1:first[1], t:0, clamped:'low'};
+  if(x >= last[0])  return {q0:last[0],  q1:last[0],  s0:last[1],  s1:last[1],  t:0, clamped:'high'};
+  for(let i = 0; i < A.length - 1; i++){
+    const q0 = A[i][0], s0 = A[i][1], q1 = A[i+1][0], s1 = A[i+1][1];
+    if(x >= q0 && x <= q1) return {q0, q1, s0, s1, t:(x - q0) / (q1 - q0)};
+  }
+  return {q0:0, q1:0, s0:0, s1:0, t:0};
+}
+
+/**
+ * 换算的两个数：b = 本局基准，d = 曲线分差。
+ * 单元格和下方「换算拆解」共用这一份，保证两处数字永远对得上。
+ * 取整前后若差 1 分，会以最终蛆分为准回写 d（对账校正）。
+ */
+function convParts(x, score, baseline, deltaOverride){
+  const b = (baseline == null) ? 50 : baseline;
+  let d = (deltaOverride == null) ? scoreDelta(x) : deltaOverride;
+  const theory = d;
+  let adjusted = false;
+  if(Math.max(0, Math.min(100, Math.round(b + d))) !== score){
+    d = score - b; adjusted = true;
+  }
+  return {b, d, theory, adjusted, sp: scoreParts(x)};
+}
+
+/**
+ * 明细表「换算」单元格：本局基准 + 曲线分差。
+ * 例：46+10.8 —— 起点就是本局基准，第二个数是偏离查尺子换出的分差。
+ */
+function convCell(x, score, baseline, deltaOverride){
+  const {b, d, sp} = convParts(x, score, baseline, deltaOverride);
+  const sg = d < 0 ? '' : '+';
+  const fmt = v => (v > 0 ? '+' : '') + v;
+  const tip = `本局基准 ${b} 分：由伤害/经济/参战/死亡四项合成惨烈度算来（见下方「换算拆解」）\n`
+    + `相对全队偏离 ${x.toFixed(2)} 落在尺子 ${sp.q0}（${fmt(sp.s0)} 分）~ ${sp.q1}（${fmt(sp.s1)} 分）之间\n`
+    + `曲线分差 ${d.toFixed(1)} 分（这条尺子与本局基准无关）\n`
+    + `蛆分 = 基准 ${b} + 分差 ${d.toFixed(1)} = ${score}`;
+  return `<td class="conv" title="${tip}">${b}<span>${sg}${d.toFixed(1)}</span></td>`;
+}
+
+/** 汇总表「换算」单元格：局均基准 + 局均分差（逐局先算再平均） */
+function convCellAvg(bAvg, dAvg, avgScore){
+  const sg = dAvg < 0 ? '' : '+';
+  const tip = `逐局先算「基准 + 曲线分差」再取平均：\n`
+    + `局均基准 ${bAvg.toFixed(2)} + 局均分差 ${dAvg.toFixed(2)} = ${(bAvg + dAvg).toFixed(2)}\n`
+    + `榜单局均蛆分 ${avgScore.toFixed(1)}（逐局取整后平均，差 0.5 分内属正常）`;
+  return `<td class="conv" title="${tip}">${bAvg.toFixed(1)}<span>${sg}${dAvg.toFixed(1)}</span></td>`;
+}
+
+/**
+ * 「换算拆解」：把换算列里的两个数（基准、分差）各自摊成能按计算器复算的算式。
+ * 46 是整局共用的，+10.8 是每个人自己的，两张表分开讲。
+ */
+function convDetailHtml(list){
+  const B = (list.find(p=>p && p.basis) || {}).basis;
+  const n = (v, k=3)=> (v>=0?'+':'') + Number(v).toFixed(k);
+  const raw = v => Math.round(v).toLocaleString();
+  const anchor = v => (v>0?'+':'') + v;
+  let basisHtml;
+  if(!B){
+    basisHtml = '<div class="hint">这局是旧数据、缺基准推导明细，重新拉取或重算一次即可补齐。</div>';
+  }else{
+    const rows = [
+      ['伤害密度', raw(B.dmgRate) + ' / 分', '3,500 ~ 9,200', B.fDmg, B.wDmg],
+      ['经济密度', raw(B.goldRate) + ' / 分', '1,600 ~ 4,050', B.fGold, B.wGold],
+      ['参战密度', B.kaRate.toFixed(2) + ' 次 / 分', '3.0 ~ 9.0', B.fKa, B.wKa],
+    ];
+    const wsum = rows.map(r=>r[3]*r[4]);
+    basisHtml = `<table class="dtbl cvtab">
+      <thead><tr><th>指标</th><th>本局数值</th><th>归一化区间</th><th>归一化 f</th><th>权重</th><th>加权 = f × 权重</th></tr></thead>
+      <tbody>
+      ${rows.map((r,i)=>`<tr><td>${r[0]}</td><td class="num-mono">${r[1]}</td>
+        <td class="num-mono">${r[2]}</td><td class="num-mono">${r[3].toFixed(3)}</td>
+        <td class="num-mono">× ${r[4].toFixed(2)}</td>
+        <td class="num-mono" style="color:#c9d4e2">${wsum[i].toFixed(3)}</td></tr>`).join('')}
+      <tr><td>死亡密度</td><td class="num-mono">${B.deathRate.toFixed(2)} 死 / 分</td>
+        <td class="num-mono">0.6 ~ 3.0</td><td class="num-mono">${B.fDeath.toFixed(3)}</td>
+        <td class="num-mono">× ${B.wDeath.toFixed(2)}</td>
+        <td class="num-mono" style="color:#c9d4e2">${(B.fDeath*B.wDeath).toFixed(3)}　<span class="hint">（直接进惨烈度，不进产出）</span></td></tr>
+      </tbody></table>
+      <div class="cvcalc">
+        <div><b>产出</b> = ${wsum.map(v=>v.toFixed(3)).join(' + ')} = <b style="color:var(--txt)">${B.output.toFixed(3)}</b>
+          <span class="hint">（越高说明这局大家打得越像人）</span></div>
+        <div><b>惨烈度</b> = (1 − ${B.output.toFixed(3)}) × ${B.wOutput.toFixed(1)} + ${B.fDeath.toFixed(3)} × ${B.wDeath.toFixed(1)}
+          = <b style="color:var(--txt)">${B.misery.toFixed(3)}</b>
+          <span class="hint">（界面上写的 ${B.misery.toFixed(2)} 就是它四舍五入到 2 位）</span></div>
+        <div><b>基准</b> = 四舍五入(30 + ${B.misery.toFixed(3)} × 40)
+          = 四舍五入(${B.baseRaw.toFixed(2)}) = <b style="color:var(--acc);font-size:13px">${B.baseline} 分</b>
+          <span class="hint">（钳在 ${B.lo}~${B.hi} 之间${B.clamped?'，本局触发了钳位':''}；时长 ${B.dur} 分钟，按 ${B.durN} 分钟托底算密度）</span></div>
+      </div>`;
+  }
+
+  const detailRows = list.map(p=>{
+    const cp = convParts(p.qRaw, p.score, p.baseline != null ? p.baseline : 50);
+    const sp = cp.sp;
+    let seg, calc;
+    if(sp.clamped){
+      seg = `超出 ${sp.clamped==='low'?'下限':'上限'} ${sp.q0}`;
+      calc = `直接取端点 <b>${anchor(sp.s0)}</b> 分`;
+    }else{
+      seg = `${sp.q0} → ${anchor(sp.s0)}　~　${sp.q1} → ${anchor(sp.s1)}`;
+      calc = `<span class="num-mono">${anchor(sp.s0)} + (${anchor(sp.s1)} − ${anchor(sp.s0)}) × (${n(p.qRaw)} − ${sp.q0}) ÷ (${sp.q1} − ${sp.q0}) = ${cp.d.toFixed(1)}</span>`
+        + (cp.adjusted ? '<span class="hint">（含取整对账）</span>' : '');
+    }
+    return `<tr><td class="nm">${esc(p.name)}</td>
+      <td class="num-mono">${n(p.qRaw)}</td>
+      <td class="num-mono" style="color:#8b95a5">${seg}</td>
+      <td>${calc}</td>
+      <td class="num-mono" style="color:#5ce8b0">${cp.d>=0?'+':''}${cp.d.toFixed(1)}</td>
+      <td class="num-mono" style="color:#c9d4e2">${cp.b} ${cp.d>=0?'+':'−'} ${Math.abs(cp.d).toFixed(1)} → <b>${p.score}</b> 分</td></tr>`;
+  }).join('');
+
+  const bl = B ? B.baseline : ((list[0]||{}).baseline||50);
+  const blDemo = list.length
+    ? `${bl}${convParts(list[0].qRaw, list[0].score, bl).d >= 0 ? '+' : ''}${convParts(list[0].qRaw, list[0].score, bl).d.toFixed(1)}`
+    : `${bl}+0.0`;
+  return `<details class="convbox" open>
+    <summary><b>换算拆解</b>：换算列里 <span class="num-mono">${blDemo}</span> 这两个数分别是怎么算出来的</summary>
+    <div class="cvsec"><b style="color:var(--acc)">① 第一个数 · 本局基准 ${bl} 分</b>
+      <span class="hint">—— 整局共用，所有人完全一样；由四项密度合成「惨烈度」再换算</span></div>
+    ${basisHtml}
+    <div class="cvsec" style="margin-top:12px"><b style="color:var(--acc)">② 第二个数 · 曲线分差</b>
+      <span class="hint">—— 每人不同，只看「偏离」列，查尺子在相邻两档之间线性插值；<b style="color:var(--txt)">与基准无关</b></span></div>
+    <div style="overflow-x:auto"><table class="dtbl cvtab">
+      <thead><tr><th>玩家</th><th>偏离 x</th><th>落在尺子哪一段</th><th>插值算式</th><th>分差</th><th>基准 + 分差 → 蛆分</th></tr></thead>
+      <tbody>${detailRows}</tbody></table></div>
+    <div class="hint" style="margin-top:7px;font-size:11.5px;line-height:1.7">
+      <b style="color:var(--txt)">换算尺子</b>（相对偏离 → 分差）：
+      ${SCORE_ANCHORS.map(a=>`<span style="color:#8b95a5">${a[0]}→${a[1]>0?'+':''}${a[1]}</span>`).join('　')}<br>
+      中段 −1 ~ +1 斜率恒为 <b style="color:var(--txt)">24 分 / 偏离</b>，所以多数人直接就是「偏离 × 24」；
+      两端渐缓做软饱和，最多 ±36 分。蛆分 = 基准 + 分差，<b style="color:var(--txt)">四舍五入取整</b>。
+    </div>
+  </details>`;
+}
+
+const FIELDS = ['name','champ','role','k','d','a','dmg','taken','heal','gold'];
+
+/* 队内 z 值的饱和压缩尺度。
+   5 人小样本里「排第一」和「排最后」的 z 天然就有 ±1.37（20 万次模拟实测），
+   这并不代表他打得特别离谱，只是他恰好站在名次两端。线性放大等于把名次
+   直接翻译成几十分的差距——一局五个人数据只差 3%，分数也能拉开 40 分。
+   这里用 tanh 压饱和：中段几乎不动（z=0.5→0.46），两端压掉三分之一
+   （z=1.4→0.88，z=1.8→0.95），保证「明显更强」还是更高分，但不再一飞冲天。 */
+const Z_SOFT = 0.9;
+
+/* 暴毙惩罚的整体缩放。
+   四条惩罚（暴毙 1.0 / 送头 0.6 / 隐身 0.5 / 输出缺席 0.4）叠满可达 2.5，
+   而 qRaw 的常态区间只有 ±1.0 左右——等于一个人只要凑齐两条，就能被
+   直接顶进最高档，跟他到底多蛆关系不大了。这里整体乘 0.7，让他确实更蛆、
+   但不再一个人拉爆全表。 */
+const PEN_K = 0.7;
+
+/** 单局惩罚封顶（缩放前）。暴毙/送头 1.0 + 隐身 0.5 + 输出缺席 0.4 理论能叠到 1.9，
+    实测出现过「六维贡献全 ≈0、纯靠惩罚拿 77 分」，所以给个硬顶。 */
+const PEN_CAP = 0.8;
+
+/** 低于这个时长的对局视为重开/异常，不进统计 */
+const MIN_DURATION = 5;
+
+/** 打满多少局才有资格参评、才在总榜里出现 */
+const MIN_GAMES = 2;
+
+
+/* 档位：按「绝对分」划分，不是按名次。全队都差不多时，谁都上不了高档。
+   这就是为什么最后一名也可能是"正常人"——他烂，但没烂到那份上。 */
+const TIERS = [
+  {min:82, name:'神蛆化蝇', desc:'约 3% 的局次，一百局见三次，蛆修成正果，建议当场录屏', color:'#ff2d55'},
+  {min:70, name:'惊天大蛆', desc:'约 8%，够全队笑一个礼拜的素材',          color:'#ff4d5e'},
+  {min:60, name:'正宗大蛆', desc:'约 16%，纯度很足，配方还很稳定',         color:'#ff7a3d'},
+  {min:50, name:'初具人形', desc:'约 26%，刚有点人样，还得再练',           color:'#ffcf4d'},
+  {min:36, name:'算个人类', desc:'约 37%，存在感刚刚好，赢了不抢功',       color:'#a3f14b'},
+  {min:0,  name:'全村希望', desc:'约 10%，全队续命全靠这位',               color:'#4dc8ff'},
+];
+function tierOf(score){
+  for(let i=0;i<TIERS.length;i++){ if(score >= TIERS[i].min) return TIERS[i]; }
+  return TIERS[TIERS.length-1];
+}
+
+/* ===================== 状态 ===================== */
+let state = {
+  date: todayStr(),
+  // 每局都带 owner（拉取时登录账号的 puuid）。'' 专指升级前那些没标记账号的旧数据
+  matches: [],      // {id,start,ts,owner,date,duration,result,rows,results}
+  cardsByDate: {},  // { 'YYYY-MM-DD': { <owner>: { '玩家名': 剩余张数 } } }
+  accounts: {},     // { <puuid>: {name,tag,lastSeen} }  账号名册
+  ignoredOwners: {},// { <puuid>: {name,tag,deletedAt,games} } 已删除、暂时停用的账号
+  // 周期汇总里手动剔除的玩家：{ '<owner>|<week|month>#<区间起点>': { '玩家名': 1 } }
+  // 只影响那一段、那个账号的统计，原始对局一局不动。
+  periodExcludes: {},
+  activeOwner: '',  // 当前在看谁的榜；'' = 未标记账号
+  ownerPicked: false, // 用户手动选过账号就不再被自动切换覆盖
+};
+
+/** 老数据迁移：旧局补 owner，旧卡池补一层账号维度 */
+function migrateMine(){
+  state.matches.forEach(m=>{ if(m.owner == null) m.owner = ''; });
+  Object.keys(state.cardsByDate || {}).forEach(d=>{
+    const pool = state.cardsByDate[d];
+    if(!pool || typeof pool !== 'object'){ state.cardsByDate[d] = {}; return; }
+    const vs = Object.values(pool);
+    // 旧结构是 {'玩家名': 张数}，值全是数字；新结构键是账号、值是对象
+    if(vs.length && vs.every(v=>typeof v === 'number')){
+      state.cardsByDate[d] = { '': pool };
+    }
+  });
+  if(!state.accounts || typeof state.accounts !== 'object') state.accounts = {};
+  if(!state.ignoredOwners || typeof state.ignoredOwners !== 'object') state.ignoredOwners = {};
+  if(!state.periodExcludes || typeof state.periodExcludes !== 'object') state.periodExcludes = {};
+  if(state.activeOwner == null) state.activeOwner = '';
+}
+
+/* ---------- 账号分区：不同账号的战绩绝不混在一起 ---------- */
+let lastAcctKey = '';        // 最近一次认到的登录账号，拉取归属兜底用
+function ownerKey(){ return state.activeOwner || ''; }
+function ownerMatches(){
+  const o = ownerKey();
+  return state.matches.filter(m => (m.owner || '') === o);
+}
+/** 删过的账号暂时停用：客户端还登录着它时，ping / 自动同步不能把它悄悄建回来 */
+function ownerKeyOf(acct){ return acct ? (acct.puuid || acct.name || '') : ''; }
+function isIgnored(k){ return !!(k && state.ignoredOwners && state.ignoredOwners[k]); }
+/** 静默同步的拦截闸门：客户端登录的号若已删除停用，就别拉、别重建 */
+function syncBlockedByIgnore(acct){
+  const k = ownerKeyOf(acct);
+  return !!(k && isIgnored(k));
+}
+/** 用户主动拉取 / 点「恢复记录」= 明确表示想重新记录这个号，解除停用 */
+function resumeOwner(k){
+  if(k && state.ignoredOwners) delete state.ignoredOwners[k];
+}
+function ignoredLabel(k){
+  const a = state.ignoredOwners && state.ignoredOwners[k];
+  if(!a) return ownerLabel(k);
+  return a.name + (a.tag ? '#' + a.tag : '');
+}
+function registerAccount(acct){
+  if(!acct || !acct.name) return '';
+  const k = ownerKeyOf(acct);
+  if(isIgnored(k)) return '';
+  state.accounts[k] = {name: acct.name, tag: acct.tag || '', lastSeen: Date.now()};
+  return k;
+}
+function ownerLabel(k){
+  if(!k) return '未标记账号';
+  const a = state.accounts[k];
+  if(!a) return k;
+  return a.name + (a.tag ? '#' + a.tag : '');
+}
+/** 切到某个账号：连榜单、免责卡一起切；这天没局就自动落到它最近有局的一天 */
+function switchOwner(k){
+  state.activeOwner = k || '';
+  state.ownerPicked = true;
+  const ms = ownerMatches().filter(m => (m.duration || 0) >= MIN_DURATION);
+  if(ms.length && !ms.some(m => m.date === state.date)){
+    const ds = Array.from(new Set(ms.map(m => m.date))).sort().reverse();
+    state.date = ds[0];
+  }
+  save(); renderBoard(); renderStat(); renderHist(); renderPeriod();
+}
+
+function dateStr(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function todayStr(){ return dateStr(new Date()); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const o = JSON.parse(raw); if(o && Array.isArray(o.matches)) state = Object.assign(state, o); }
+  }catch(e){}
+  // 跨天重开默认回到「今天」。
+  // 旧条件带 !state.draft，可 draft 几乎总是存在，等于从没生效过：
+  // 第二天打开还停在昨天的榜，「昨日蛆王补偿」也按 state.date 判断，会一起不出现。
+  if(state.date !== todayStr()) state.date = todayStr();
+  if('draft' in state) delete state.draft;   // 录入页已移除，顺手把旧存档里的草稿清掉
+  if(!state.cardsByDate || typeof state.cardsByDate !== 'object') state.cardsByDate = {};
+  migrateMine();
+}
+
+/** 取某天、某账号的卡池（惰性创建）。卡也是按账号发的，否则 A 的卡会替 B 免罪 */
+function cardPool(date, owner){
+  const d = date || state.date;
+  const o = (owner === undefined) ? ownerKey() : owner;
+  if(!state.cardsByDate[d] || typeof state.cardsByDate[d] !== 'object'){
+    state.cardsByDate[d] = {};
+  }
+  if(!state.cardsByDate[d][o] || typeof state.cardsByDate[d][o] !== 'object'){
+    state.cardsByDate[d][o] = {};
+  }
+  return state.cardsByDate[d][o];
+}
+function cardCount(name, date){
+  const p = cardPool(date);
+  return p[name] || 0;
+}
+function setCard(name, date, n){
+  const p = cardPool(date);
+  n = Math.max(0, n | 0);
+  if(n === 0) delete p[name];
+  else p[name] = n;
+  save();
+}
+
+/* ===================== 计算核心 ===================== */
+function avg(a){ return a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0; }
+function std(a,m){ if(a.length<2) return 0; const v = a.reduce((s,x)=>s+(x-m)*(x-m),0)/a.length; return Math.sqrt(v); }
+function median(a){
+  if(!a.length) return 0;
+  const s = a.slice().sort((x,y)=>x-y), h = s.length >> 1;
+  return s.length % 2 ? s[h] : (s[h-1]+s[h])/2;
+}
+
+/**
+ * 计算一局，返回 results 数组（与 rows 对齐，空行 result=null）
+ */
+function computeMatch(m){
+  const rows = m.rows;
+  const idx = [];
+  rows.forEach((r,i)=>{ if(String(r.name).trim()) idx.push(i); });
+  if(idx.length < 2) return null;
+
+  const P = idx.map(i=>{
+    const r = rows[i];
+    return {
+      i, name:String(r.name).trim(), champ:r.champ||'', role:ROLES.includes(r.role)?r.role:'战',
+      k:+r.k||0, d:+r.d||0, a:+r.a||0, dmg:+r.dmg||0, taken:+r.taken||0, heal:+r.heal||0, gold:+r.gold||0,
+    };
+  });
+
+  const S = {
+    dmg:  P.reduce((s,p)=>s+p.dmg,0),
+    ka:   P.reduce((s,p)=>s+p.k+p.a,0),
+    gold: P.reduce((s,p)=>s+p.gold,0),
+    heal: P.reduce((s,p)=>s+p.heal,0),
+    taken:P.reduce((s,p)=>s+p.taken,0),
+  };
+  const dur = Math.max(1, +m.duration || 1);
+
+  // 原始指标
+  P.forEach(p=>{
+    p.dmgShare  = S.dmg ? p.dmg/S.dmg : 0;
+    p.kpShare   = S.ka  ? (p.k+p.a)/S.ka : 0;
+    p.dpm       = p.d / dur;
+    p.goldShare = S.gold? p.gold/S.gold : 0;
+    p.eff       = p.goldShare > 0.001 ? p.dmgShare/p.goldShare : 1;
+    p.utilShare = S.heal? p.heal/S.heal : 0;
+    // 承伤占比：队里谁在挨打。dir=-1 表示承伤越高越不蛆
+    p.takenShare= S.taken? p.taken/S.taken : 0;
+  });
+
+  // 六维 z-score（方向已归一为"越大越蛆"）
+  const dims = [
+    {key:'dmgShare',  dir:-1, w:'dmg'},
+    {key:'kpShare',   dir:-1, w:'kp'},
+    {key:'dpm',       dir: 1, w:'death'},
+    {key:'eff',       dir:-1, w:'eff'},
+    {key:'takenShare',dir:-1, w:'taken'},
+    {key:'utilShare', dir:-1, w:'util'},
+  ];
+  const mx = {}, sd = {}, mean = {};
+  dims.forEach(d=>{
+    const arr = P.map(p=>p[d.key]);
+    mean[d.key] = avg(arr); sd[d.key] = std(arr, mean[d.key]);
+  });
+  dims.forEach(d=>{
+    P.forEach(p=>{
+      const zr = sd[d.key] > 1e-9
+        ? (d.dir === 1 ? (p[d.key]-mean[d.key]) : (mean[d.key]-p[d.key]))/sd[d.key]
+        : 0;
+      // 饱和压缩（见 Z_SOFT 注释）：中段保留区分度，两端不再无限放大
+      p['z_'+d.key] = Z_SOFT * Math.tanh(zr / Z_SOFT);
+      p['zRaw_'+d.key] = zr;        // 未压缩值，明细表悬停时显示
+    });
+  });
+
+  // 加权求原始蛆分
+  const dMed = median(P.map(p=>p.d));          // 队内死亡中位数，用于判定"是否比别人更送"
+  const dmgMean = mean['dmgShare'];
+  const takenMean = mean['takenShare'];
+  // 每死承伤：衡量"这条命换来了多少伤害"。坦死得多但每死都扛满，是工作；
+  // 每死只扛一两千，那就是白给。
+  // 0 死的玩家不参与「每死承伤」均值：他没死过，taken/d 无意义，
+  // 直接把 taken 当成 tpd 会把量级放大几十倍，把队均值拉到天上，
+  // 结果别的坦克永远够不到豁免线。
+  const tpdVals = P.filter(p => p.d > 0).map(p => p.taken / p.d);
+  const tpdMean = tpdVals.length ? avg(tpdVals) : 0;
+  // 某维度全队数据完全一样（标准差为 0，比如治疗一栏全是 0）时，这项权重是白给的，
+  // 会白白削弱其他维度。这里把失效维度的权重按比例分给有效维度，避免"辅助因为治疗
+  // 没数据而被判成蛆"这种误伤。
+  const dimOk = {};
+  dims.forEach(d=>{ dimOk[d.w] = sd[d.key] > 1e-9; });
+
+  /** 算出该定位在本局真正生效的六维权重：先按兜底表转移失效权重，再归一化 */
+  function effWeights(role){
+    const W = Object.assign({}, ROLE_W[role] || ROLE_W['战']);
+    const fb = DIM_FALLBACK[role] || {};
+    Object.keys(fb).forEach(bad=>{
+      const to = fb[bad];
+      if(!dimOk[bad] && dimOk[to] && W[bad]){
+        W[to] += W[bad];
+        W[bad] = 0;
+      }
+    });
+    Object.keys(W).forEach(k=>{ if(!dimOk[k]) W[k] = 0; });
+    const sum = Object.keys(W).reduce((s, k)=>s + W[k], 0);
+    if(sum > 1e-9) Object.keys(W).forEach(k=>{ W[k] /= sum; });
+    return W;
+  }
+
+  P.forEach(p=>{
+    const W = effWeights(p.role);
+    let q = 0;
+    // 把每一维的（归一化后）加权贡献单独存下来，供单局与汇总的明细表使用
+    dims.forEach(d=>{
+      const wEff = W[d.w] || 0;
+      const c = wEff * p['z_'+d.key];
+      p['c_' + d.w] = c;
+      p['w_' + d.w] = wEff;          // 明细表要显示"实际生效权重"
+      q += c;
+    });
+    p.base = q;                     // 不含惩罚的小计
+    // 暴毙惩罚：只有死得比队友明显多才算个人问题，整队被碾压不诛连。
+    // 坦位既打折也抬高门槛——扛伤换命是职责，不该和射手同一个尺子量。
+    let pen = 0, flags = [];
+    const ps = PEN_SCALE[p.role] || 1;
+    // 坦位的宽限只给"真在扛"的，而且要同时满足两条：
+    //   ① 承伤占比不低于队伍均值 85%（确实顶在前面）
+    //   ② 每死承伤不低于队伍均值（这条命换到了伤害，不是白送）
+    // 只满足①而每死扛得比谁都少，说明他死得没价值，不给豁免。
+    const tpdSelf = p.d > 0 ? p.taken / p.d : Infinity;  // 0 死无需死亡豁免
+    const tankWorking = (p.role === '坦')
+      && (p.takenShare >= takenMean * 0.85)
+      && (tpdSelf >= tpdMean);
+    // 辅助的职责是参团和开团，判据就用参团率：低于队均说明在躲，不给开团位的宽容
+    const kpMean = mean['kpShare'] || 0;
+    const suppWorking = (p.role === '辅') && (p.kpShare >= kpMean);
+
+    let psEff = ps, dBlow = 8, dHigh = (p.role === '辅') ? 13 : 12;
+    if(p.role === '坦'){
+      if(tankWorking){ dBlow = 10; dHigh = 13; }
+      else { psEff = 1.0; }          // 没扛伤的坦，按普通标准罚
+    } else if(p.role === '辅'){
+      if(suppWorking){ dBlow = 9; }  // 在参团的辅，暴毙门槛抬到 9
+      else { psEff = 1.0; }          // 躲着不参团的辅，不打折
+    }
+    // 暴毙与送头说的是同一件事（死太多），只按更重的一条计。
+    // 以前两条会同时触发：死 12 次的人被罚 1.0+0.6=1.6，×0.7 后 1.12（约 26 分），
+    // 实测有玩家六维贡献全 ≈0，纯靠这条堆到 77 分——同一件事罚两遍，不合理。
+    const blow = (p.d >= dBlow && dur < 15 && p.d > dMed);
+    const feed = (p.d >= dHigh);
+    if(blow && feed){
+      pen += 1.0 * psEff;
+      flags.push('暴毙送头');
+    } else if(blow){
+      pen += 1.0 * psEff;
+      flags.push('暴毙局');
+    } else if(feed){
+      pen += 0.6 * psEff;
+      flags.push('送头大师');
+    }
+    if(p.k + p.a === 0 && dur >= 8){ pen += 0.5; flags.push('全场隐身'); }
+    // 输出缺席：按定位设阈值，坦/辅本来就不该有输出
+    const thr = (p.role === '坦' || p.role === '辅') ? 0.30 : 0.55;
+    if(dmgMean > 0 && p.dmgShare < dmgMean * thr && p.dmg > 0){ pen += 0.4; flags.push('输出缺席'); }
+    // 硬顶：几条惩罚叠满理论上能到 1.9，不给顶的话「平均表现」也能被推成蛆王
+    pen = Math.min(pen, PEN_CAP);
+    p.penalty = pen * PEN_K;      // 惩罚缩放到统一量级（见 PEN_K 注释）
+    p.qRaw = q + p.penalty;
+    p.flags = flags;
+  });
+
+  // ===== 每局基准：只决定「这局从几分起算」，不参与换算曲线 =====
+  // 六维 z 是队内相对的，抹掉了局与局之间的绝对强弱，所以基准只能看原始数据。
+  // 单项指标都会骗人：光看死亡会漏掉「全员猛发育但被抓崩」的局；
+  // 光看伤害会漏掉「互送乱斗」。所以用四项合成一个「惨烈度」：
+  //   产出 = 伤害密度 45% + 经济密度 30% + 参战密度 25%，产出越低越惨；
+  //   死亡密度越高越惨，占四成。
+  // 各项区间以常态局（P50）为中点标定，保证普通对局基准落在 50 上下。
+  // 时长按 12 分钟托底：投降/重开局只有五六分钟，各项密度会被放大好几倍。
+  // ⚠️ 这些区间与权重仍是人工常数，尚未用真实对局反标（见 v3.46 审计记录）。
+  const durN = Math.max(12, dur);
+  const totalDeaths = P.reduce((s, p)=>s + p.d, 0);
+  const dmgRate = S.dmg / durN;
+  const goldRate = S.gold / durN;
+  const kaRate = S.ka / durN;
+  const deathRate = totalDeaths / durN;
+  const norm = (v, lo, hi)=> Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+  const fDmg = norm(dmgRate, 3500, 9200);
+  const fGold = norm(goldRate, 1600, 4050);
+  const fKa = norm(kaRate, 3.0, 9.0);
+  const fDeath = norm(deathRate, 0.6, 3.0);
+  const output = fDmg * 0.45 + fGold * 0.30 + fKa * 0.25;   // 本局产出（0=很差, 1=很好）
+  const misery = (1 - output) * 0.6 + fDeath * 0.4;         // 惨烈度（0=很爽, 1=很惨）
+  // 下限不能太低：基准是「这局全队的平均分」，若基准压到 36，
+  // 那么「全员神勇」局里必然有一半人被打成 36 分以下（全村希望档），
+  // 等于白白冤枉一批人。抬到 40，让最稳的局平均值也落在「算个人类」。
+  const baseRaw = 30 + misery * 40;
+  const baseline = Math.max(40, Math.min(74, Math.round(baseRaw)));
+  // 把基准的每一步中间量留在结果里，明细表要逐项摊给用户复算
+  const basis = {
+    dur, durN, totalDeaths,
+    dmgRate, goldRate, kaRate, deathRate,
+    fDmg, fGold, fKa, fDeath,
+    wDmg:0.45, wGold:0.30, wKa:0.25, wOutput:0.6, wDeath:0.4,
+    output, misery, baseRaw, baseline,
+    lo:40, hi:74,
+    clamped: baseRaw < 40 ? 'low' : (baseRaw > 74 ? 'high' : ''),
+  };
+  const baseMean = avg(P.map(p => p.base));
+  // 只把队均对齐到 0，基准【不】进这一步。
+  // 惩罚仍然在居中之后叠加：有人送头时全队平均分自然高于基准，那局本来就得更蛆。
+  const shift = -baseMean;              // 本局统一对齐量（同一局所有人都一样）
+  const qs = P.map(p => p.base + p.penalty + shift);
+  P.forEach((p, i)=>{
+    p.shift = shift;
+    p.baseline = baseline;              // 本局基准分（动态，不是固定 50）
+    p.basis = basis;                    // 基准的完整推导（同一局共享一份）
+    p.misery = Math.round(misery * 100) / 100;   // 惨烈度 0~1
+    p.deathRate = Math.round(deathRate * 100) / 100;
+    p.qRawRaw = p.base + p.penalty;     // 未对齐的原始量，仅供核对
+    p.qRaw = qs[i];                     // 相对全队平均的偏离（±1 量级）
+    p.delta = scoreDelta(p.qRaw);       // 曲线换出的分差，与本局基准无关
+    p.score = scoreOf(p.qRaw, baseline); // 基准只在这里做一次加法
+    p.rankIn = 1 + qs.filter(x => x > p.qRaw + 1e-9).length;
+  });
+
+  // 输出结果数组（与 rows 索引对齐）
+  const out = rows.map(()=>null);
+  P.forEach(p=>{ out[p.i] = p; });
+  return out;
+}
+
+/* 算法指纹：权重表或关键常量一变，指纹就变，旧对局自动整套重算。
+   以前靠手写 state._v 数字，改权重时忘了加一版，旧数据就一直挂着老分数。 */
+const ALGO_SIG = [
+  'dims6', JSON.stringify(ROLE_W), JSON.stringify(PEN_SCALE),
+  'deltaCurve', JSON.stringify(SCORE_ANCHORS), 'centerAdditive', 'baselineAddOnly',
+  'tpdNoPassive', 'deathRateFloor12', 'dimFallback', 'baselineMulti',
+  'tankFloor0.85', 'tankTpd', 'pen10-13', 'suppKp9', 'contrib',
+  // 压缩与惩罚缩放也进指纹：改了它们分数会变，老数据必须跟着重算
+  'zSoft' + Z_SOFT, 'penK' + PEN_K, 'penCap' + PEN_CAP,
+  // 只补展示用的中间量，分数算法没变；旧局重算一次好让明细带齐推导数据
+  'basisDetail1',
+].join('#');
+
+/** 按当前算法重算全部已存对局；返回实际重算的局数 */
+function refreshScores(force){
+  if(!force && state.algo === ALGO_SIG) return 0;
+  let n = 0;
+  for(const m of state.matches){
+    try{
+      const r = computeMatch(m);
+      if(r){ m.results = r; n++; }
+    }catch(e){}
+  }
+  state.algo = ALGO_SIG;
+  save();
+  return n;
+}
+
+/* ===================== 渲染：公共工具 ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ===================== 渲染：榜单 ===================== */
+/** 当前账号 + 当前日期的对局（所有统计、双王、战报都从这里出发） */
+function todayMatches(){
+  return dayMatches(state.date);
+}
+
+/**
+ * 逐局结算免责卡
+ * 规则：某人若在某一局被判队内最蛆，且有免责卡，则消耗一张、该局蛆王顺延；
+ *       但必须"还有下一位能顶上"才生效 —— 全队最后一名不许被豁免，否则这局就没有蛆王了。
+ * 返回每局的实际蛆王、被豁免者，以及每位玩家"该计入统计的局"。
+ */
+function settleDay(ms, cards){
+  const pool = Object.assign({}, cards || {});
+  const perMatch = new Array(ms.length).fill(null);
+  const rows = [];
+  ms.forEach((m, idx)=>{
+    const list = (m.results || []).filter(Boolean)
+      .sort((a,b)=>(b.qRaw||0)-(a.qRaw||0)||b.score-a.score);
+    if(list.length) rows.push({idx, list});
+  });
+  // 卡是偏袒，不是抽签：优先用在「他当蛆且分数最高」的那一局。
+  // 若按时间顺序先打的先用，可能免掉一局低分，剩下的均值反而被抬上去——
+  // 那就成了「用了卡分数更难看」，跟这机制的目的正好相反。
+  rows.sort((a,b)=>
+    (b.list[0].score || 0) - (a.list[0].score || 0) ||
+    (b.list[0].qRaw || 0) - (a.list[0].qRaw || 0));
+  for(const r of rows){
+    const list = r.list;
+    let i = 0;
+    const saved = [];
+    while(i < list.length - 1 && (pool[list[i].name] || 0) > 0 && list[i].score > 0){
+      pool[list[i].name] = (pool[list[i].name] || 0) - 1;
+      saved.push({name:list[i].name, score:list[i].score, champ:list[i].champ});
+      i++;
+    }
+    perMatch[r.idx] = { winner: list[i], saved, list };
+  }
+  return { perMatch, poolAfter: pool };
+}
+
+/** 同一局的指纹：账号 + 日期 + 时长 + 阵容与KDA。
+ *  账号必须进指纹 —— 两个号在同一局里时，阵容和KDA完全相同，
+ *  不带账号会被误判成重复而丢掉其中一份。 */
+function matchFingerprint(m){
+  const rows = (m.rows || [])
+    .filter(r => r && String(r.name || '').trim())
+    .map(r => [r.name, r.champ, r.k, r.d, r.a].join(','))
+    .sort()
+    .join('|');
+  return (m.owner || '') + '@' + (m.date || '') + '#' + (m.duration || 0) + '#' + rows;
+}
+
+/** 从一次拉取结果里判断这批对局该归谁：优先 puuid，其次账号名 */
+function ownerFromPull(d){
+  if(d){
+    // 走到这里说明是用户主动点了拉取：即使这个号之前被删过，也当作「想重新记录」，
+    // 解除停用再入库。自动同步路径在 autoSyncTick 开头就被拦住，不会走到这。
+    if(d.puuid) resumeOwner(d.puuid);
+    if(d.account){
+      resumeOwner(ownerKeyOf(d.account));
+      registerAccount(d.account);
+    }
+    if(d.puuid) return d.puuid;
+    if(d.account && d.account.name) return d.account.name;
+  }
+  return ownerKey();          // 浏览器模式兜底：跟着当前视图走
+}
+
+/** 把拉取到的原始块转成可入库的记录，顺带做时长校验与去重。
+ *  owner = 拉这一批时登录账号的 puuid，决定它归谁的榜。 */
+function ingestBlocks(blocks, fallbackDate, existing, owner){
+  const res = {added: 0, dup: 0, tooShort: 0, patched: 0, owner: owner || ''};
+  for(const m of blocks){
+    if(!m.rows || m.rows.length < 2) continue;
+    if((m.duration || 0) < MIN_DURATION){ res.tooShort++; continue; }
+    // start = 真实开局时间（客户端给的 gameCreation，毫秒）。
+    // 老代码只存了 Date.now() 当 ts，批量导入时所有局同一秒入库，
+    // 单局明细就全显示成同一个时间——那是入库时刻，不是开局时刻。
+    const start = Number(m.start) || 0;
+    const match = {
+      id: uid(), start, ts: start || Date.now(), owner: owner || '', date: m.date || fallbackDate,
+      duration: m.duration, result: m.win ? 'win' : 'lose',
+      rows: m.rows.map(x=>({
+        name: x.name, champ: x.champ, role: x.role,
+        k: String(x.k), d: String(x.d), a: String(x.a),
+        dmg: String(x.dmg), taken: String(x.taken),
+        heal: String(x.heal), gold: String(x.gold),
+      })),
+      results: null,
+    };
+    const fp = matchFingerprint(match);
+    if(existing.has(fp)){
+      // 重拉时顺手给老局补上真实开局时间（指纹不含时间，分数不受影响）
+      if(start){
+        const old = state.matches.find(x => !x.start && matchFingerprint(x) === fp);
+        if(old){ old.start = start; old.ts = start; res.patched++; }
+      }
+      res.dup++; continue;
+    }
+    existing.add(fp);
+    match.results = computeMatch(match);
+    state.matches.push(match);
+    res.added++;
+  }
+  return res;
+}
+
+function blankStat(name){
+  // games = 计入成绩的局数（被免责卡免掉的不算）；playedGames = 实际打过的局数。
+  // 两者分开，才能既让分数变化、又不让人因为免卡掉出门槛。
+  return {name, games:0, playedGames:0, sumScore:0, sumQRaw:0, maxScore:0, kills:0, deaths:0, assists:0,
+          daySet:new Set(),   // 参与过的日期，周期榜拿来显示「打满了几天」
+          dmgShareSum:0, effSum:0, effN:0, toxicTimes:0, bestTimes:0, savedTimes:0,
+          champSet:new Set(),
+          // 下面这几个只为战报评语服务：要写"毒舌评语"就得知道承伤、参团、常用定位
+          takenShareSum:0, kpShareSum:0, roles:{}, champCount:{},
+          // 六维加权贡献累加器，供"维度贡献"汇总表使用
+          cDmg:0, cKp:0, cDeath:0, cEff:0, cTaken:0, cUtil:0, penSum:0,
+          shiftSum:0, qRawSum:0, baselineSum:0, deltaSum:0};
+}
+
+/** 统计表取用器：同名玩家共用同一个累加器，没有就新建 */
+function statGetter(map){
+  return name => {
+    let o = map.get(name);
+    if(!o){ o = blankStat(name); map.set(name, o); }
+    return o;
+  };
+}
+
+/**
+ * 把「一天的结算结果」累加进统计表。
+ * 单日榜与周期榜共用这一份口径 —— 两边各写一遍迟早会对不上。
+ * cards 必须只是这一天的卡池：免责卡按日独立，混在一起会让昨天的卡在今天生效。
+ */
+function accumulateDay(map, get, ms, cards){
+  const { perMatch } = settleDay(ms, cards);
+  ms.forEach((m, mi)=>{
+    const pm = perMatch[mi];
+    if(!pm) return;
+    const savedNames = new Set();
+    pm.saved.forEach(x=>{
+      savedNames.add(x.name);
+      get(x.name).savedTimes++;
+    });
+    // 「当蛆 / 当大腿」按名次算，不按绝对分：
+    // 钝化之后 70 分以上只占 8%，按分数线统计一天下来几乎全是 0，等于没在工作。
+    // 名次口径也更贴直觉——"当了几次蛆王"就是排第一的次数。
+    // 被免责卡豁免的人只是不参与「当蛆」评比，其余照算，所以算名次时把他摘掉。
+    const pool = (m.results || []).filter(p => p && !savedNames.has(p.name));
+    let minRank = 0, maxRank = 0;
+    if(pool.length >= 2){
+      minRank = Math.min.apply(null, pool.map(p => p.rankIn || 1));
+      maxRank = Math.max.apply(null, pool.map(p => p.rankIn || 1));
+    }
+    (m.results || []).forEach(p=>{
+      if(!p) return;
+      const savedThis = savedNames.has(p.name);
+      const o = get(p.name);
+      // 实际打过就算一局：门槛与「x 局」显示用它，免了卡也不会掉出榜单。
+      o.playedGames++;
+      if(m.date) o.daySet.add(m.date);   // 参与天数（被免的局也算参与了）
+      // 但被免掉的那局成绩不计（分数、六维、死亡都不算），
+      // 这样局均分才会真的降下来——不然「用了卡分数还一样」，等于没偏袒。
+      if(savedThis) return;
+      o.games++;
+      o.sumScore += p.score;
+      o.sumQRaw += p.qRaw;
+      o.maxScore = Math.max(o.maxScore, p.score);
+      o.kills += p.k; o.deaths += p.d; o.assists += p.a;
+      o.dmgShareSum += p.dmgShare;
+      o.takenShareSum += (p.takenShare || 0);
+      o.kpShareSum += (p.kpShare || 0);
+      o.cDmg += (p.c_dmg || 0); o.cKp += (p.c_kp || 0); o.cDeath += (p.c_death || 0);
+      o.cEff += (p.c_eff || 0); o.cTaken += (p.c_taken || 0); o.cUtil += (p.c_util || 0);
+      o.penSum += (p.penalty || 0);
+      o.shiftSum += (p.shift || 0);       // 各局对齐量，汇总表的加法链靠它闭合
+      o.qRawSum += (p.qRaw || 0);         // 各局相对偏离
+      o.baselineSum += (p.baseline || 50); // 各局基准（按人次，汇总取局均）
+      o.deltaSum += (p.delta || 0);        // 各局曲线分差（逐局先算再平均）
+      if(p.role) o.roles[p.role] = (o.roles[p.role] || 0) + 1;
+      if(p.champ) o.champCount[p.champ] = (o.champCount[p.champ] || 0) + 1;
+      if(p.goldShare > 0.001){ o.effSum += p.eff; o.effN++; }
+      // 当蛆：只算顺延后的实际蛆王（被豁免者上面已经 return，不会走到这）
+      if(minRank && (p.rankIn || 1) === minRank) o.toxicTimes++;
+      if(maxRank && (p.rankIn || 1) === maxRank) o.bestTimes++;    // 当大腿：照常算
+      if(p.champ) o.champSet.add(p.champ);
+    });
+  });
+}
+
+/** 收尾：把累加器换算成可排序的榜单行（单日榜与周期榜共用） */
+function finalizeStats(map){
+  const topKey = obj => Object.keys(obj || {}).sort((a,b)=>obj[b]-obj[a])[0] || '';
+  const arr = Array.from(map.values()).map(o=>({
+    ...o,
+    avgScore: o.games ? o.sumScore/o.games : 0,
+    avgDmgShare: o.games ? o.dmgShareSum/o.games : 0,
+    avgTakenShare: o.games ? o.takenShareSum/o.games : 0,
+    avgKpShare: o.games ? o.kpShareSum/o.games : 0,
+    avgEff: o.effN ? o.effSum/o.effN : 1,
+    mainRole: topKey(o.roles),
+    mainChamp: topKey(o.champCount),
+    // 门槛看「实际打了多少局」，不是「有多少局算成绩」：
+    // 否则弱者一用卡就掉出榜单，偏袒变成惩罚。
+    qualified: o.playedGames >= MIN_GAMES && o.games > 0,
+    fullySaved: o.games === 0,       // 全被免：没成绩，不参评
+    totalGames: o.playedGames,
+    days: (o.daySet ? o.daySet.size : 0),
+  }));
+  arr.sort((a,b)=>{
+    if(a.qualified !== b.qualified) return a.qualified ? -1 : 1;
+    return b.avgScore - a.avgScore;
+  });
+  return arr;
+}
+
+/** 某一天、当前账号、够时长的对局 */
+function dayMatches(date, owner){
+  const o = (owner === undefined) ? ownerKey() : owner;
+  return state.matches.filter(m =>
+    (m.owner || '') === o && m.date === date && (m.duration || 0) >= MIN_DURATION);
+}
+
+/** 只读某天的卡池：翻历史日期时不要顺手凭空建一个空卡池写进存档 */
+function cardsFor(date, owner){
+  const o = (owner === undefined) ? ownerKey() : owner;
+  return (state.cardsByDate && state.cardsByDate[date] && state.cardsByDate[date][o]) || {};
+}
+
+function buildStats(date){
+  const d = date || state.date;
+  const map = new Map();
+  accumulateDay(map, statGetter(map), dayMatches(d), cardsFor(d));
+  return finalizeStats(map);
+}
+
+/**
+ * 区间统计（本周 / 本月）。
+ * 必须逐日结算再累加：免责卡是按天发的，整段一起结算等于让昨天的卡留到今天用，
+ * 也等于把「每天最多免几个人」的限制抹掉。加冕与门槛仍走 finalizeStats / pickCrown，
+ * 口径与单日榜完全一致——只是分母变成整段时间。
+ */
+function buildStatsRange(from, to){
+  const owner = ownerKey();
+  const map = new Map();
+  const get = statGetter(map);
+  const byDate = new Map();
+  state.matches.forEach(m=>{
+    if((m.owner || '') !== owner) return;
+    if((m.duration || 0) < MIN_DURATION) return;
+    const d = m.date || '';
+    if(!d || d < from || d > to) return;
+    if(!byDate.has(d)) byDate.set(d, []);
+    byDate.get(d).push(m);
+  });
+  Array.from(byDate.keys()).sort().forEach(d=>{
+    accumulateDay(map, get, byDate.get(d), cardsFor(d, owner));
+  });
+  return finalizeStats(map);
+}
+
+/**
+ * 统计区间：week = 本周（周一起），month = 本月（1 号起）。
+ * 以 state.date 为锚点，翻到历史日期也能看那一周 / 那一月的战绩；
+ * 正常打开时 state.date 就是今天（load() 会把它拉回来）。
+ */
+function periodRange(kind, anchor){
+  const base = (anchor || state.date || todayStr());
+  const d = new Date(base + 'T12:00:00');
+  if(isNaN(d.getTime())) return {kind:'week', from:base, to:base, label:'本周'};
+  if(kind === 'month'){
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return {kind, from: dateStr(first), to: dateStr(last),
+            label: `${d.getFullYear()} 年 ${d.getMonth()+1} 月`};
+  }
+  const dow = (d.getDay() + 6) % 7;          // 周一 = 0 … 周日 = 6
+  const mon = new Date(d); mon.setDate(d.getDate() - dow);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return {kind:'week', from: dateStr(mon), to: dateStr(sun), label: '本周'};
+}
+
+
+/**
+ * 今日蛆王 = 局均蛆分最高；今日大腿 = 局均蛆分最低。
+ *
+ * 曾经改成按「当蛆次数」加冕，结果闹出「42.5 分（全队最低）当蛆王」——
+ * 因为「当蛆」是单局队内排名，不是绝对分：一个人可能某局队内最蛆、
+ * 另一局却垫底，次数够了但均分最低。帽子必须跟着分数走，否则说不通。
+ *
+ * 免责卡的作用路径也因此更直接：免掉的局不计成绩 ⇒ 均分被拉低 ⇒
+ * 他自然不再是第一名。单局明细里的「本局蛆王顺延」仍由 settleDay 负责。
+ */
+function pickCrown(arr){
+  if(!arr || !arr.length) return {champ:null, thigh:null};
+  const byScore = arr.slice().sort((a,b)=>
+    b.avgScore - a.avgScore || a.name.localeCompare(b.name, 'zh'));
+  const champ = byScore[0];
+  const thigh = arr.length >= 2 ? byScore[byScore.length - 1] : null;
+  return {champ, thigh};
+}
+
+/** 未达门槛的折叠区是否展开（重绘时保持用户的选择） */
+let unqOpen = false;
+
+/** 「维度贡献汇总」的展开状态，重绘时保持 */
+let dimOpen = true;
+
+/** 未打满门槛的人收进这个折叠块，不参与排名但一个都不丢 */
+function unqBlock(rest){
+  if(!rest.length) return '';
+  const rows = rest.map(o=>{
+    const t = tierOf(o.avgScore);
+    return `<tr>
+      <td><b>${esc(o.name)}</b></td>
+      <td class="num-mono">${o.playedGames}${o.savedTimes?`<span style="color:#7fd4ff" title="有 ${o.savedTimes} 局用免责卡免掉了成绩（局数仍算）">·免${o.savedTimes}</span>`:''}</td>
+      <td class="num-mono" style="color:${t.color};font-weight:600">${o.fullySaved ? '<span style="color:#7fd4ff">全免</span>' : o.avgScore.toFixed(1)}</td>
+      <td><span style="color:${t.color}">${o.fullySaved ? '—' : t.name}</span></td>
+    </tr>`;
+  }).join('');
+  return `<details class="unq" id="unqBox"${unqOpen ? ' open' : ''}>
+    <summary>另有 ${rest.length} 人未参与评比（没打满 ${MIN_GAMES} 局，或打的局全被免责卡免掉）<span class="unqTip">（点开看）</span></summary>
+    <div style="overflow-x:auto"><table class="rank unqtbl">
+      <thead><tr>
+        <th>玩家</th><th style="width:70px">局数</th>
+        <th style="width:96px">局均蛆分</th><th style="width:104px">档位</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </details>`;
+}
+
+/** 六维贡献的一个格子：正数偏蛆(红)、负数偏大腿(绿)，hover 看原始值与 z */
+function dimTd(p, key, zkey, rawTxt, label){
+  const c = p['c_' + key];
+  if(c == null) return '<td class="zero">—</td>';
+  const W = ROLE_W[p.role] || ROLE_W['战'];
+  // 用「实际生效权重」：某维全队没差异时会失效，权重会转移，显示名义值会骗人
+  const w = (((p['w_' + key] != null) ? p['w_' + key] : (W[key] || 0)) * 100).toFixed(0);
+  const z = (p['z_' + zkey] || 0).toFixed(2);
+  const zRaw = (p['zRaw_' + zkey] || 0).toFixed(2);
+  const cls = c > 0.005 ? 'bad' : (c < -0.005 ? 'good' : 'zero');
+  const sign = c > 0.005 ? '+' : '';
+  const zTxt = zRaw === z ? `队内 z=${z}` : `队内 z=${zRaw}（压缩后 ${z}）`;
+  return `<td class="${cls}" title="${label}：${rawTxt} ｜ ${zTxt} × 权重 ${w}% = ${sign}${c.toFixed(2)}">${sign}${c.toFixed(2)}</td>`;
+}
+
+/** 时间戳 → hh:mm，取不到就返回空串 */
+function fmtClock(ms){
+  const n = Number(ms) || 0;
+  if(!n) return '';
+  const d = new Date(n);
+  if(isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderBoard(noYest){
+  // 没打满门槛的人：不进主榜排名，但收进下面的折叠区，一个都不丢
+  const all = buildStats();
+  const arr = all.filter(o => o.qualified);
+  const rest = all.filter(o => !o.qualified);
+  const ms = todayMatches();
+  const settled = settleDay(ms, cardPool(state.date));
+  const perMatch = settled.perMatch;
+  const issuedPool = cardPool(state.date);   // 发放总数
+  const leftPool = settled.poolAfter;                       // 结算后剩余
+
+  // 加冕：蛆王（分最高） 与 大腿（分最低）
+  const box = $('#crownBox');
+  const tbox = $('#thighBox');
+  // 加冕看「实际当蛆/当大腿次数」，免责卡免掉的局不计数 ⇒ 卡用了帽子会顺延
+  const { champ, thigh } = pickCrown(arr);
+
+  if(!champ){
+    box.innerHTML = `<div class="icon">👑</div><div>
+      <div class="who idle">虚位以待</div>
+      <div class="meta">${ms.length===0 ? '今天一局都还没录'
+        : `已录 ${ms.length} 局，满 ${MIN_GAMES} 局才产生蛆王`}</div>
+    </div>`;
+  } else {
+    const ct = tierOf(champ.avgScore);
+    box.innerHTML = `<div class="icon">👑</div><div>
+      <div class="who"><span class="badge">今日蛆王</span>${esc(champ.name)}</div>
+      <div class="meta">
+        <div>评价：<b style="color:${ct.color}">${ct.name}</b></div>
+        <div>局均蛆分 <b style="color:#ffcf4d">${champ.avgScore.toFixed(1)}</b> · ${champ.playedGames} 局${champ.savedTimes?`（免 ${champ.savedTimes}）`:''} · 当蛆 ${champ.toxicTimes} 次</div>
+      </div>
+    </div>`;
+  }
+
+  if(!thigh){
+    tbox.innerHTML = `<div class="icon">💪</div><div>
+      <div class="who idle">虚位以待</div>
+      <div class="meta">${arr.length < 2 ? `至少要 2 人打满 ${MIN_GAMES} 局才比得出大腿` : '暂无'}</div>
+    </div>`;
+  } else {
+    const tt = tierOf(thigh.avgScore);
+    tbox.innerHTML = `<div class="icon">💪</div><div>
+      <div class="who"><span class="badge">今日大腿</span>${esc(thigh.name)}</div>
+      <div class="meta">
+        <div>评价：<b>${tt.name}</b></div>
+        <div>局均蛆分 <b>${thigh.avgScore.toFixed(1)}</b> · ${thigh.playedGames} 局${thigh.savedTimes?`（免 ${thigh.savedTimes}）`:''} · 大腿 ${thigh.bestTimes} 次</div>
+      </div>
+    </div>`;
+  }
+
+  // 排名表
+  if(!arr.length){
+    $('#rankBox').innerHTML = `<div class="empty">${ms.length === 0
+      ? '还没有数据，先点上方「⚡ 从客户端拉取对局」'
+      : `已录 ${ms.length} 局，还没有人打满 ${MIN_GAMES} 局`}</div>` + unqBlock(rest);
+    $('#dimSummary').innerHTML = '';      // 没数据就别留着上一次的表
+  } else {
+    $('#rankBox').innerHTML = `<div style="overflow-x:auto"><table class="rank">
+      <thead><tr>
+        <th style="width:34px"></th><th>玩家</th><th style="width:70px">局数</th>
+        <th style="width:90px">局均蛆分</th><th style="width:80px">总蛆分</th>
+        <th style="width:74px">当蛆</th><th style="width:74px">大腿</th><th style="width:96px">档位</th><th style="width:78px">免责卡</th>
+      </tr></thead>
+      <tbody>
+      ${arr.map((o,i)=>`<tr class="${i===0&&o.qualified?'p1':''}">
+        <td><span class="pos">${i+1}</span></td>
+        <td><b>${esc(o.name)}</b>${champ&&o.name===champ.name?' <span title="今日蛆王">👑</span>':''}${thigh&&o.name===thigh.name?' <span title="今日大腿">💪</span>':''}</td>
+        <td class="num-mono" title="实际打了 ${o.playedGames} 局${o.savedTimes?`，其中 ${o.savedTimes} 局用免责卡免掉了成绩`:''}">${o.playedGames}${o.savedTimes?`<span style="color:#7fd4ff">·免${o.savedTimes}</span>`:''}</td>
+        <td class="num-mono" style="color:${o.avgScore>=70?'#ff4d5e':o.avgScore>=50?'#ffcf4d':'#a3f14b'};font-weight:700" title="只按 ${o.games} 局计成绩算的均值${o.savedTimes?`（被免的 ${o.savedTimes} 局不计入）`:''}">${o.avgScore.toFixed(1)}</td>
+        <td class="num-mono">${o.sumScore.toFixed(0)}</td>
+        <td class="num-mono">${o.toxicTimes}<span style="color:#4d5766">/${o.playedGames}</span></td>
+        <td class="num-mono" style="color:${o.bestTimes>0?'#5ce8b0':'#4d5766'}">${o.bestTimes}<span style="color:#4d5766">/${o.playedGames}</span></td>
+        <td>${o.fullySaved ? '<span style="color:#7fd4ff">全免</span>' : (()=>{const t=tierOf(o.avgScore);return `<span style="color:${t.color}">${t.name}</span>`;})()}</td>
+        <td>${(()=>{
+          const issued = issuedPool[o.name] || 0;
+          const left = leftPool[o.name] || 0;
+          const n = esc(o.name);
+          return `<span class="cardctl">
+            <button class="cbtn" data-card-dec="${n}" title="收回一张">−</button>
+            <span class="cnum${left>0?' has':''}" title="剩余 / 已发（手动发放；改张数会立刻重算当天全部对局）">${left}/${issued}</span>
+            <button class="cbtn" data-card-inc="${n}" title="发放一张">+</button>
+          </span>`;
+        })()}</td>
+      </tr>`).join('')}
+      </tbody></table></div>` + unqBlock(rest);
+
+    // 维度贡献汇总：看每个人的蛆分是被哪几项拉起来的、哪几项在兜底
+    $('#dimSummary').innerHTML = arr.length ? (()=>{
+      const rows = arr.map((o,i)=>{
+        const n = Math.max(1, o.games);
+        const avg = v => (v || 0) / n;
+        const cell = (v, label) => {
+          const cls = v > 0.005 ? 'bad' : (v < -0.005 ? 'good' : 'zero');
+          const sign = v > 0.005 ? '+' : '';
+          return `<td class="${cls}" title="${label} 局均贡献 ${sign}${v.toFixed(2)}">${sign}${v.toFixed(2)}</td>`;
+        };
+        const six = [avg(o.cDmg), avg(o.cKp), avg(o.cDeath), avg(o.cEff), avg(o.cTaken), avg(o.cUtil)];
+        const base = six.reduce((a,b)=>a+b, 0);
+        const sh = avg(o.shiftSum);
+        const penAvg = avg(o.penSum);
+        const total = avg(o.qRawSum);   // 各局「相对全队偏离」的均值
+        const chained = base + sh + penAvg;
+        const bAvg = avg(o.baselineSum);  // 该玩家参与各局的基准平均
+        const dAvg = avg(o.deltaSum);     // 逐局曲线分差的平均
+        const sign = v => v > 0.005 ? '+' : '';
+        return `<tr class="${i===0&&o.qualified?'r1':''}">
+          <td class="num-mono" style="color:#4d5766">${i+1}</td>
+          <td class="nm">${esc(o.name)}${champ&&o.name===champ.name?' 👑':''}</td>
+          <td class="num-mono">${o.games}</td>
+          ${cell(six[0],'输出')}${cell(six[1],'参团')}${cell(six[2],'死亡')}
+          ${cell(six[3],'转化')}${cell(six[4],'承伤')}${cell(six[5],'功能')}
+          <td class="sub" title="前六列直接相加 = ${base.toFixed(2)}">${sign(base)}${base.toFixed(2)}</td>
+          <td class="sub" style="color:#7d8798" title="各局把队均对齐到 0 的量的平均">${sign(sh)}${sh.toFixed(2)}</td>
+          <td class="pen">${penAvg>0.005?'+'+penAvg.toFixed(2):'—'}</td>
+          <td class="sub" title="小计 ${base.toFixed(2)} + 对齐 ${sh.toFixed(2)} + 惩罚 ${penAvg.toFixed(2)} = ${chained.toFixed(2)}；逐局记录均值 ${total.toFixed(2)}">${sign(total)}${total.toFixed(2)}</td>
+          ${convCellAvg(bAvg, dAvg, o.avgScore)}
+          <td style="font-weight:700;color:${o.avgScore>=70?'#ff4d5e':o.avgScore>=50?'#ffcf4d':'#a3f14b'}" title="每局蛆分 = 该局基准 + 曲线分差，先取整再取平均；与左边局均基准 + 局均分差差 0.5 分内属正常">${o.avgScore.toFixed(1)}</td>
+        </tr>`;
+      }).join('');
+      return `<details class="dimsbox" id="dimBox"${dimOpen ? ' open' : ''}>
+        <summary>
+          <b>维度贡献汇总</b>（局均）
+          <span class="dsum">— 六项相加 = <b style="color:#c9d4e2">小计</b>；小计 + 对齐 + 惩罚 = <b style="color:#c9d4e2">偏离</b>；<b style="color:#c9d4e2">基准 + 分差</b> = 蛆分</span>
+        </summary>
+        <div style="overflow-x:auto"><table class="dtbl dimtbl">
+          <thead><tr>
+            <th style="width:30px"></th><th>玩家</th><th>局数</th>
+            <th>输出</th><th>参团</th><th>死亡</th><th>转化</th><th>承伤</th><th>功能</th>
+            <th>小计</th><th>对齐</th><th>惩罚</th><th>偏离</th><th>换算</th><th>局均蛆分</th>
+          </tr></thead><tbody>${rows}</tbody>
+        </table></div>
+        <div class="hint" style="margin-top:7px;font-size:11.5px;line-height:1.7">
+          <b style="color:var(--txt)">每一列都能直接加减</b>：前六项 → 小计 → +对齐 +惩罚 → 偏离（量级 ±1）
+          → 查<b style="color:var(--txt)">换算尺子</b>得分差 → <b style="color:var(--txt)">局均基准 + 局均分差 = 局均蛆分</b>。<br>
+          「换算」列显示 <span class="num-mono">44.0+19.0</span> 这样的两段：<b style="color:var(--txt)">前一段 = 他参与各局基准分的平均</b>
+          （各局基准由该局四项密度算来，逐局推导见「维度分解」里的换算拆解），
+          <b style="color:var(--txt)">后一段 = 各局曲线分差的平均</b>（每局「基准 + 分差」先算出来再取平均，不是拿平均偏离去查一次尺子）。
+          基准只做加法，不参与尺子，所以同一份相对差距在任何局都换出同样的分差。
+        </div>
+      </details>`;
+    })() : '';
+  }
+
+  // 维度汇总的展开状态也记下来，重绘后不弹回默认
+  const db = $('#dimBox');
+  if(db) db.addEventListener('toggle', ()=>{ dimOpen = db.open; });
+
+  // 折叠区开关状态记下来，下次重绘（比如点免责卡）不会自己收回去
+  const ub = $('#unqBox');
+  if(ub){
+    ub.addEventListener('toggle', ()=>{ unqOpen = ub.open; });
+  }
+
+  // 单局明细
+  if(!ms.length){
+    $('#matchList').innerHTML = `<div class="empty">暂无对局</div>`;
+  } else {
+    $('#matchList').innerHTML = ms.map((m,mi)=>{
+      const list = m.results.filter(Boolean).sort((a,b)=>(b.qRaw||0)-(a.qRaw||0)||b.score-a.score);
+      if(!list.length) return '';
+      const pm = perMatch[mi] || null;
+      const worm = (pm && pm.winner) ? pm.winner : list[0];
+      const saved = (pm && pm.saved) ? pm.saved : [];
+      const thigh = list.length > 1 ? list[list.length-1] : null;
+
+      const who = `<div class="who-line">
+        <span class="w">🪱 本局蛆王：<b>${esc(worm.name)}</b>　${worm.score} 分 · ${tierOf(worm.score).name}　${esc(worm.champ)}·${worm.role} ${worm.k}/${worm.d}/${worm.a}</span>
+        ${thigh ? `<span class="t">💪 本局大腿：<b>${esc(thigh.name)}</b>　${thigh.score} 分 · ${tierOf(thigh.score).name}　${esc(thigh.champ)}·${thigh.role} ${thigh.k}/${thigh.d}/${thigh.a}</span>` : ''}
+        ${saved.length ? `<span class="saved">🛡 ${saved.map(x=>esc(x.name)+'（'+x.score+' 分）').join('、')} 用免责卡免掉本局成绩，名额顺延（局数仍算）</span>` : ''}
+      </div>`;
+
+      const bars = `<div class="res">${list.map((p,idx)=>{
+        let mark = '';
+        if(p.name === worm.name) mark = '🪱 ';
+        else if(idx === list.length-1 && list.length > 1) mark = '💪 ';
+        const isSaved = saved.some(x=>x.name === p.name);
+        if(isSaved) mark = '🛡 ' + mark;      // 被免的人挂个盾，一眼能看出这局没背锅
+        const tr = tierOf(p.score);
+        // 高亮跟着「本局实际蛆王」走，不能写死第一名：被免责卡豁免后蛆王会顺延
+        return `<div class="resrow${p.name===worm.name?' top1':''}${isSaved?' savedrow':''}">
+          <div class="nm">${mark}<b>${esc(p.name)}</b><em>${esc(p.champ)}·${p.role} ${p.k}/${p.d}/${p.a}</em></div>
+          <div class="bar"><i style="width:${p.score}%;background:${tr.color}"></i></div>
+          <div class="tierc" style="color:${tr.color}">${tr.name}</div>
+          <div class="sc" style="color:${tr.color}">${p.score}</div>
+        </div>`;}).join('')}</div>`;
+
+      const detail = `<details class="mdetail">
+        <summary>展开完整数据 + 维度分解（看这局谁被哪一项拉分）</summary>
+        <div style="overflow-x:auto"><table class="dtbl">
+          <thead><tr>
+            <th>玩家</th><th>英雄</th><th>位</th><th>K/D/A</th>
+            <th>英雄伤害</th><th>占比</th><th>承受伤害</th><th>治疗护盾</th><th>金币</th><th>转化</th><th>蛆分</th>
+          </tr></thead>
+          <tbody>${list.map(p=>`<tr>
+            <td>${esc(p.name)}</td><td>${esc(p.champ)}</td><td>${p.role}</td><td>${p.k}/${p.d}/${p.a}</td>
+            <td>${p.dmg.toLocaleString()}</td>
+            <td style="color:${p.dmgShare>=0.28?'#ff8c96':'inherit'}">${(p.dmgShare*100).toFixed(1)}%</td>
+            <td>${p.taken.toLocaleString()}</td>
+            <td>${p.heal.toLocaleString()}</td>
+            <td>${p.gold.toLocaleString()}</td>
+            <td style="color:${p.eff<0.8?'#ffcf4d':'inherit'}">${p.eff.toFixed(2)}</td>
+            <td style="font-weight:700;color:${p.score>=70?'#ff4d5e':p.score>=50?'#ffcf4d':'#a3f14b'}">${p.score}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+
+        <div class="dtbltitle">▸ <b>维度分解</b>：每项先算队内 z 值，再乘该定位的权重得贡献
+          （<b style="color:#ff8c96">正数偏蛆</b> / <b style="color:#5ce8b0">负数偏大腿</b>）。
+          六项相加 = <b>小计</b>；小计 + <b>对齐</b> + <b>惩罚</b> = <b>偏离</b>（相对全队平均差多少）；
+          <b>偏离</b>查尺子 = <b>分差</b>；<b style="color:var(--acc)">本局基准 + 分差 = 蛆分</b>。
+          <b style="color:var(--acc)">表里每一列都能直接加减</b>，悬停任意一格可看具体数据。<br>
+          「对齐」是本局统一量，把队均对齐到 0，同一局所有人一样。
+          本局基准 <b style="color:var(--acc)">${(()=>{
+            const p0 = list[0] || {};
+            return p0.baseline != null ? p0.baseline : 50;
+          })()} 分</b>（惨烈度 ${(()=>{
+            const p0 = list[0] || {};
+            return p0.misery != null ? p0.misery : 0;
+          })()}，由伤害/经济/参战/死亡四项合成）——<b style="color:var(--txt)">基准只做最后那一次加法，不进尺子</b>，
+          所以这局整体多惨，都不会改变「谁比谁差多少分」。<br>
+          「换算」列的两个数（如 <span class="num-mono">46+10.8</span>）分别是「本局基准」和「偏离查尺子换出的分差」，
+          <b style="color:var(--acc)">两个数怎么算出来的，见下方「换算拆解」</b>，每一步都列了算式。</div>
+        <div style="overflow-x:auto"><table class="dtbl dimtbl">
+          <thead><tr>
+            <th>玩家</th><th>位</th><th>输出</th><th>参团</th><th>死亡</th>
+            <th>转化</th><th>承伤</th><th>功能</th><th>小计</th><th>对齐</th><th>惩罚</th><th>偏离</th><th>换算</th><th>蛆分</th>
+          </tr></thead>
+          <tbody>${list.map(p=>{
+            // 小计 = 六项直接相加；对齐、惩罚各自单列，保证每一列都能加减
+            const base = (p.base != null) ? p.base
+              : (p.qRaw - (p.shift || 0) - (p.penalty || 0));
+            const sh = p.shift || 0;
+            const pen = p.penalty || 0;
+            const bl = p.baseline != null ? p.baseline : 50;
+            return `<tr>
+              <td class="nm">${esc(p.name)}</td>
+              <td>${p.role}</td>
+              ${dimTd(p,'dmg','dmgShare',(p.dmgShare*100).toFixed(1)+'%','输出占比')}
+              ${dimTd(p,'kp','kpShare',(p.kpShare*100).toFixed(1)+'%','参团率')}
+              ${dimTd(p,'death','dpm',p.dpm.toFixed(2),'死亡密度')}
+              ${dimTd(p,'eff','eff',p.eff.toFixed(2),'经济转化')}
+              ${dimTd(p,'taken','takenShare',(p.takenShare*100).toFixed(1)+'%','承伤占比')}
+              ${dimTd(p,'util','utilShare',(p.utilShare*100).toFixed(1)+'%','治疗占比')}
+              <td class="sub" title="六项直接相加 = ${base>=0?'+':''}${base.toFixed(2)}">${base>=0?'+':''}${base.toFixed(2)}</td>
+              <td class="sub" style="color:#7d8798" title="本局统一对齐量：把队均对齐到 0（基准不在这里参与）">${sh>=0?'+':''}${sh.toFixed(2)}</td>
+              <td class="pen">${pen>0.005?'+'+pen.toFixed(2):'—'}</td>
+              <td class="sub" title="小计 ${base.toFixed(2)} + 对齐 ${sh.toFixed(2)} + 惩罚 ${pen.toFixed(2)} = ${p.qRaw.toFixed(2)}（相对全队平均的偏离）">${p.qRaw>=0?'+':''}${p.qRaw.toFixed(2)}</td>
+              ${convCell(p.qRaw, p.score, bl)}
+              <td style="font-weight:700;color:${p.score>=70?'#ff4d5e':p.score>=50?'#ffcf4d':'#a3f14b'}">${p.score}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+        ${convDetailHtml(list)}
+      </details>`;
+
+      return `<div class="matchblk">
+        <div class="matchhd">
+          <b>第 ${mi+1} 局</b>
+          <span>${m.duration} 分钟</span>
+          <span class="${m.result==='win'?'win':'lose'}">${m.result==='win'?'胜':'负'}</span>
+          ${m.start
+            ? `<span title="真实开局时间">${fmtClock(m.start)}</span>`
+            : (m.ts ? `<span style="color:#5a6478" title="旧数据只记了入库时间，不是开局时间。重新「一键全量拉取」可补上真实开局时间">入库 ${fmtClock(m.ts)}</span>` : '')}
+          <div class="spacer" style="flex:1"></div>
+          <button class="btn ghost" data-delmatch="${m.id}" style="padding:3px 9px;font-size:11.5px">删除</button>
+        </div>
+        ${who}
+        ${bars}
+        ${detail}
+      </div>`;
+    }).join('');
+  }
+
+  // 补偿条跟着榜单一起刷新（改卡数后分数会变），但输入时传 noYest 避免输入框被重建
+  if(!noYest) renderYesterdayCrown();
+}
+
+$('#rankBox').addEventListener('click', e=>{
+  const inc = e.target.closest('[data-card-inc]');
+  const dec = e.target.closest('[data-card-dec]');
+  if(!inc && !dec) return;
+  const name = inc ? inc.dataset.cardInc : dec.dataset.cardDec;
+  const cur = cardCount(name);
+  setCard(name, null, inc ? cur + 1 : cur - 1);
+  renderBoard();
+});
+
+$('#matchList').addEventListener('click', e=>{
+  const b = e.target.closest('[data-delmatch]');
+  if(!b) return;
+  if(!confirm('删除这一局？')) return;
+  state.matches = state.matches.filter(m=>m.id !== b.dataset.delmatch);
+  save(); renderBoard(); renderStat();
+});
+
+/* ===================== 周期汇总（本周 / 本月，可往前翻） ===================== */
+/** 当前看的是周还是月。只是视图偏好，不写进 state——免得被导出 JSON 带出去 */
+let periodKind = 'week';
+/**
+ * 周期页正在看哪一段，存一个锚点日期。
+ * 与 state.date 分开：翻往周不该把「今日榜单」也带走，更不该动当天的免责卡。
+ * 空串 = 还没翻过，首次进页时跟着当前查看日期走。
+ */
+let periodAnchor = '';
+
+/** 当前区间是否就是「今天所在的周 / 月」 */
+function isCurrentPeriod(kind, r){
+  const t = periodRange(kind || periodKind, todayStr());
+  return r ? r.from === t.from : periodRange(kind || periodKind, periodAnchor || state.date || todayStr()).from === t.from;
+}
+
+/** 往前 / 往后翻一段：周 = ±7 天，月 = ±1 月。不许翻到未来，翻不动就返回 false */
+function shiftPeriod(dir){
+  if(!periodAnchor) periodAnchor = state.date || todayStr();
+  const d = new Date(periodAnchor + 'T12:00:00');
+  if(isNaN(d.getTime())) return false;
+  if(periodKind === 'month'){
+    d.setDate(1);                       // 先归到 1 号，避免 31 号 +1 月溢出到下下月
+    d.setMonth(d.getMonth() + dir);
+  } else {
+    d.setDate(d.getDate() + dir * 7);
+  }
+  const next = dateStr(d);
+  const target = periodRange(periodKind, next);
+  const today = periodRange(periodKind, todayStr());
+  if(target.from > today.from) return false;     // 没有「未来周 / 未来月」
+  if(target.from === periodRange(periodKind, periodAnchor).from) return false;
+  periodAnchor = next;
+  return true;
+}
+
+/** 周期剔除的键：账号 + 粒度 + 区间起点。
+    必须带账号 —— 否则 A 号剔掉的人，切到 B 号的同一周也会一起消失。 */
+function periodExcludeKey(kind, from, owner){
+  return (owner === undefined ? ownerKey() : owner) + '|' + (kind || periodKind) + '#' + (from || '');
+}
+/** 只读：这一段已剔除的名字 */
+function periodExcludedNames(key){
+  const m = state.periodExcludes && state.periodExcludes[key];
+  return (m && typeof m === 'object') ? Object.keys(m) : [];
+}
+/** 写入 / 撤销一个剔除；表空了就顺手删掉，别在存档里留垃圾 */
+function setPeriodExcluded(key, name, on){
+  if(!state.periodExcludes || typeof state.periodExcludes !== 'object') state.periodExcludes = {};
+  let m = state.periodExcludes[key];
+  if(!m || typeof m !== 'object'){ m = state.periodExcludes[key] = {}; }
+  if(on) m[name] = 1;
+  else delete m[name];
+  if(!Object.keys(m).length) delete state.periodExcludes[key];
+  save();
+}
+
+function renderPeriod(){
+  if(!$('#tab-period')) return;
+  if(!periodAnchor) periodAnchor = state.date || todayStr();
+  const r = periodRange(periodKind, periodAnchor);
+  const cur = isCurrentPeriod(periodKind, r);
+  const pkey = periodExcludeKey(periodKind, r.from);
+  const excluded = periodExcludedNames(pkey);
+  const skip = new Set(excluded);
+  const all = buildStatsRange(r.from, r.to).filter(o => !skip.has(o.name));
+  const arr = all.filter(o => o.qualified);
+  const rest = all.filter(o => !o.qualified);
+  const { champ, thigh } = pickCrown(arr);
+  const kindWord = (periodKind === 'month') ? '月' : '周';
+  const span = (cur ? '本' : '该') + kindWord;
+
+  // 区间内的局 / 天 / 人：只算当前账号、够时长的局
+  const owner = ownerKey();
+  const ms = state.matches.filter(m =>
+    (m.owner || '') === owner && m.date >= r.from && m.date <= r.to &&
+    (m.duration || 0) >= MIN_DURATION);
+  const days = Array.from(new Set(ms.map(m => m.date))).sort();
+  const people = new Set();
+  ms.forEach(m => (m.rows || []).forEach(x=>{
+    const n = String((x && x.name) || '').trim();
+    if(n) people.add(n);
+  }));
+
+  // 粒度按钮高亮
+  const bw = $('#pWeek'), bm = $('#pMonth');
+  if(bw) bw.className = 'btn' + (periodKind === 'week' ? ' pri' : ' ghost');
+  if(bm) bm.className = 'btn' + (periodKind === 'month' ? ' pri' : ' ghost');
+
+  // 翻页控件：当前段不能再往后；不在当前段时给出「回到本X」
+  const prev = $('#pPrev'), next = $('#pNext'), back = $('#pBack'), label = $('#pLabel');
+  if(prev){ prev.textContent = `‹ 上一${kindWord}`; prev.title = `往前看一${kindWord}`; }
+  if(next){
+    next.textContent = `下一${kindWord} ›`;
+    next.disabled = cur;
+    next.title = cur ? `已经是本${kindWord}了` : `往后看一${kindWord}`;
+  }
+  if(back){
+    back.style.display = cur ? 'none' : '';
+    back.textContent = `⏭ 回到本${kindWord}`;
+    back.title = `回到当前所在的${kindWord}`;
+  }
+  if(label){
+    label.textContent = (periodKind === 'month')
+      ? `${r.from.slice(0,4)} 年 ${Number(r.from.slice(5,7))} 月`
+      : `${r.from} ~ ${r.to}`;
+    label.style.color = cur ? 'var(--txt)' : '#ffb03d';
+  }
+
+  const stat = $('#periodStat');
+  if(stat) stat.textContent = `${ms.length} 局 · ${days.length} 天 · ${people.size} 人`;
+
+  const title = $('#pRankTitle');
+  if(title) title.innerHTML = `${span}总榜 <small>${esc(r.from)} ~ ${esc(r.to)}`
+    + ` · 局均分 = 区间内各局蛆分均值；满 ${MIN_GAMES} 局才参评</small>`;
+
+  // 双王：口径与今日榜一致（区间局均分最高 / 最低）
+  const box = $('#pCrownBox'), tbox = $('#pThighBox');
+  if(box){
+    if(!champ){
+      box.innerHTML = `<div class="icon">👑</div><div>
+        <div class="who idle">虚位以待</div>
+        <div class="meta">${ms.length === 0 ? '这段时间一局都还没录'
+          : `已录 ${ms.length} 局，满 ${MIN_GAMES} 局才产生${span}蛆王`}</div>
+      </div>`;
+    } else {
+      const ct = tierOf(champ.avgScore);
+      box.innerHTML = `<div class="icon">👑</div><div>
+        <div class="who"><span class="badge">${span}蛆王</span>${esc(champ.name)}</div>
+        <div class="meta">
+          <div>评价：<b style="color:${ct.color}">${ct.name}</b></div>
+          <div>区间局均 <b style="color:#ffcf4d">${champ.avgScore.toFixed(1)}</b> · ${champ.playedGames} 局（${champ.days} 天）${champ.savedTimes?` · 免 ${champ.savedTimes}`:''}</div>
+        </div>
+      </div>`;
+    }
+  }
+  if(tbox){
+    if(!thigh){
+      tbox.innerHTML = `<div class="icon">💪</div><div>
+        <div class="who idle">虚位以待</div>
+        <div class="meta">${arr.length < 2 ? `至少要 2 人打满 ${MIN_GAMES} 局才比得出${span}大腿` : '暂无'}</div>
+      </div>`;
+    } else {
+      const tt = tierOf(thigh.avgScore);
+      tbox.innerHTML = `<div class="icon">💪</div><div>
+        <div class="who"><span class="badge">${span}大腿</span>${esc(thigh.name)}</div>
+        <div class="meta">
+          <div>评价：<b style="color:${tt.color}">${tt.name}</b></div>
+          <div>区间局均 <b>${thigh.avgScore.toFixed(1)}</b> · ${thigh.playedGames} 局（${thigh.days} 天）${thigh.savedTimes?` · 免 ${thigh.savedTimes}`:''}</div>
+        </div>
+      </div>`;
+    }
+  }
+
+  // 剔除栏：只列本段已剔除的人，点一下放回来
+  const ebar = $('#pExcludeBar');
+  if(ebar){
+    ebar.innerHTML = excluded.length
+      ? `<div class="undobar" style="background:rgba(255,154,61,.07);border-color:rgba(255,154,61,.35);margin-bottom:10px">
+          <span style="flex:1;min-width:210px">
+            已从本${kindWord}统计里剔除 <b style="color:var(--txt)">${excluded.length}</b> 人
+            <span style="color:#7d8798">（只影响这${kindWord}的榜与加冕，原始对局没动）</span>
+          </span>
+          ${excluded.map(n=>`<button class="btn ghost" style="padding:3px 10px;font-size:12px" data-include="${esc(n)}" title="恢复参评">${esc(n)} ✕</button>`).join('')}
+        </div>`
+      : '';
+  }
+
+  // 区间总榜
+  if(!arr.length){
+    const emptyMsg = (ms.length === 0)
+      ? '这段时间还没有数据，先切到「今日榜单」拉一次对局'
+      : (rest.length === 0 && excluded.length
+          ? `本${kindWord}的玩家都被剔除了，点上面的名字可以恢复`
+          : `已录 ${ms.length} 局，还没有人打满 ${MIN_GAMES} 局`);
+    $('#pRankBox').innerHTML = `<div class="empty">${emptyMsg}</div>` + unqBlock(rest);
+  } else {
+    $('#pRankBox').innerHTML = `<div style="overflow-x:auto"><table class="rank">
+      <thead><tr>
+        <th style="width:34px"></th><th>玩家</th><th style="width:70px">局数</th>
+        <th style="width:88px">局均蛆分</th><th style="width:80px">总蛆分</th>
+        <th style="width:74px">当蛆</th><th style="width:74px">大腿</th>
+        <th style="width:64px">天数</th><th style="width:96px">档位</th><th style="width:52px"></th>
+      </tr></thead>
+      <tbody>
+      ${arr.map((o,i)=>{
+        const t = tierOf(o.avgScore);
+        const cIcon = (champ && o.name === champ.name) ? ` <span title="${span}蛆王">👑</span>` : '';
+        const tIcon = (thigh && o.name === thigh.name) ? ` <span title="${span}大腿">💪</span>` : '';
+        return `<tr class="${i===0?'p1':''}">
+          <td><span class="pos">${i+1}</span></td>
+          <td><b>${esc(o.name)}</b>${cIcon}${tIcon}</td>
+          <td class="num-mono" title="区间内实际打了 ${o.playedGames} 局${o.savedTimes?`，其中 ${o.savedTimes} 局用免责卡免掉了成绩`:''}">${o.playedGames}${o.savedTimes?`<span style="color:#7fd4ff">·免${o.savedTimes}</span>`:''}</td>
+          <td class="num-mono" style="color:${o.avgScore>=70?'#ff4d5e':o.avgScore>=50?'#ffcf4d':'#a3f14b'};font-weight:700" title="只按 ${o.games} 局计成绩算的区间均值">${o.avgScore.toFixed(1)}</td>
+          <td class="num-mono">${o.sumScore.toFixed(0)}</td>
+          <td class="num-mono">${o.toxicTimes}<span style="color:#4d5766">/${o.playedGames}</span></td>
+          <td class="num-mono" style="color:${o.bestTimes>0?'#5ce8b0':'#4d5766'}">${o.bestTimes}<span style="color:#4d5766">/${o.playedGames}</span></td>
+          <td class="num-mono" title="区间内参与的天数">${o.days}</td>
+          <td>${o.fullySaved ? '<span style="color:#7fd4ff">全免</span>' : `<span style="color:${t.color}">${t.name}</span>`}</td>
+          <td><button class="btn ghost" style="padding:2px 8px;font-size:12px" data-exclude="${esc(o.name)}" title="从本${kindWord}统计里剔除（原始对局不动，可随时恢复）">✕</button></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>` + unqBlock(rest);
+  }
+
+  // 逐日蛆王：这段时间每天的帽子归谁
+  const daily = $('#pDailyBox');
+  if(daily){
+    if(!days.length){
+      daily.innerHTML = `<div class="empty">这段时间还没有对局</div>`;
+    } else {
+      const rows = days.slice().reverse().map(d=>{
+        // 与区间榜同口径：被剔除的人不参与当天的加冕，否则两处说法不一
+        const c = pickCrown(buildStats(d).filter(o => o.qualified && !skip.has(o.name)));
+        const n = ms.filter(m => m.date === d).length;
+        const cHtml = c.champ
+          ? `<b>${esc(c.champ.name)}</b> <span style="color:#7d8798">${c.champ.avgScore.toFixed(1)}</span>`
+          : '<span style="color:#4d5766">—</span>';
+        const tHtml = c.thigh
+          ? `<b>${esc(c.thigh.name)}</b> <span style="color:#7d8798">${c.thigh.avgScore.toFixed(1)}</span>`
+          : '<span style="color:#4d5766">—</span>';
+        return `<tr>
+          <td class="num-mono">${esc(d)}</td>
+          <td class="num-mono">${n}</td>
+          <td>${cHtml}</td>
+          <td>${tHtml}</td>
+          <td><button class="btn ghost" style="padding:4px 9px;font-size:12px" data-jumpdate="${esc(d)}">看这天</button></td>
+        </tr>`;
+      }).join('');
+      daily.innerHTML = `<div style="overflow-x:auto"><table class="rank">
+        <thead><tr><th style="width:110px">日期</th><th style="width:64px">局数</th>
+        <th>当天蛆王</th><th>当天大腿</th><th style="width:92px"></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+  }
+}
+
+/** 周期页交互：周 / 月粒度切换、往前翻、回到当前、跳到某一天 */
+(function bindPeriod(){
+  const sec = $('#tab-period');
+  if(!sec) return;
+  sec.addEventListener('click', e=>{
+    const pb = e.target.closest && e.target.closest('[data-period]');
+    if(pb){
+      periodKind = (pb.dataset.period === 'month') ? 'month' : 'week';
+      renderPeriod();          // 保持浏览位置：在 10 月翻周，切月还是 10 月
+      return;
+    }
+    const sb = e.target.closest && e.target.closest('[data-shift]');
+    if(sb){
+      const dir = Number(sb.dataset.shift) || 0;
+      if(dir === 0) periodAnchor = todayStr();
+      else if(!shiftPeriod(dir)) return;
+      renderPeriod();
+      return;
+    }
+    const key = () => periodExcludeKey(periodKind, periodRange(periodKind, periodAnchor || todayStr()).from);
+    const xb = e.target.closest && e.target.closest('[data-exclude]');
+    if(xb && xb.dataset.exclude){
+      setPeriodExcluded(key(), xb.dataset.exclude, true);
+      renderPeriod();
+      flashLive(`已从本${periodKind === 'month' ? '月' : '周'}统计里剔除 ${xb.dataset.exclude}`, '#ff9a3d');
+      return;
+    }
+    const ib = e.target.closest && e.target.closest('[data-include]');
+    if(ib && ib.dataset.include){
+      setPeriodExcluded(key(), ib.dataset.include, false);
+      renderPeriod();
+      flashLive(`已恢复 ${ib.dataset.include} 参评`, '#a3f14b');
+      return;
+    }
+    const jb = e.target.closest && e.target.closest('[data-jumpdate]');
+    if(jb && jb.dataset.jumpdate){
+      state.date = jb.dataset.jumpdate;
+      save(); renderStat();
+      const nav = document.querySelector('nav button[data-tab="board"]');
+      if(nav) nav.click(); else renderBoard();
+    }
+  });
+})();
+
+function renderStat(){
+  const ms = todayMatches();
+  const people = new Set();
+  ms.forEach(m=>m.rows.forEach(r=>{ if(r.name && r.name.trim()) people.add(r.name.trim()); }));
+  $('#statChip').textContent = `${ms.length} 局 · ${people.size} 人`;
+  syncOwnerOptions();
+  syncDateOptions();
+}
+
+/** 重建「查看账号」下拉：列出名册里的账号 + 各自有多少局，外加一档「未标记账号」 */
+function syncOwnerOptions(){
+  const sel = $('#ownerIn');
+  if(!sel) return;
+  // 兜底：万一存档里 activeOwner 还指向已停用的账号，先纠正，别把一长串 puuid 显示出来
+  if(isIgnored(ownerKey())){ state.activeOwner = ''; state.ownerPicked = false; }
+  const cnt = {};
+  state.matches.forEach(m=>{
+    if((m.duration || 0) < MIN_DURATION) return;
+    const k = m.owner || '';
+    cnt[k] = (cnt[k] || 0) + 1;
+  });
+  const keys = new Set(Object.keys(state.accounts || {}));
+  Object.keys(cnt).forEach(k=>keys.add(k));
+  if(state.activeOwner) keys.add(state.activeOwner);
+  keys.forEach(k=>{ if(isIgnored(k)) keys.delete(k); });  // 已删除的账号不进下拉
+  if(!keys.size) keys.add('');
+
+  const cur = ownerKey();
+  const arr = Array.from(keys).sort((a,b)=>{
+    if(a === cur) return -1;
+    if(b === cur) return 1;
+    if(a === '') return 1;          // 未标记账号永远排最后
+    if(b === '') return -1;
+    return ownerLabel(a).localeCompare(ownerLabel(b), 'zh');
+  });
+  const sig = arr.map(k=>k + ':' + (cnt[k] || 0)).join('|');
+  if(sel.dataset.sig !== sig){
+    sel.dataset.sig = sig;
+    sel.innerHTML = arr.map(k=>{
+      const n = cnt[k] || 0;
+      const nm = ownerLabel(k);
+      return `<option value="${esc(k)}">${esc(nm)}${n ? '　' + n + ' 局' : '　（暂无）'}</option>`;
+    }).join('');
+  }
+  sel.value = cur;
+}
+
+$('#ownerIn').addEventListener('change', e=>switchOwner(e.target.value));
+
+/* ===================== 战报图 ===================== */
+$('#btnReport').onclick = ()=>{
+  const arr = buildStats().filter(x => x.qualified);   // 没满门槛的不进战报
+  const ms = todayMatches();
+  if(!ms.length) return alert('还没有对局，没法生成战报。');
+  // 与榜单同一口径：局均蛆分最高者加冕、最低者当大腿（免掉的局不计成绩）
+  const { champ, thigh } = pickCrown(arr);
+
+  const topN = Math.min(6, arr.length);
+  // 评语改成两句 + 一行数据，排名区跟着往下让位，画布高度动态算
+  const vInfo = champ ? verdict(champ) : null;
+  const VERD_Y = 482, VLH = 38, DLH = 30;
+  const vHeight = vInfo ? (vInfo.lines.length * VLH + DLH) : 0;
+  const THIGH_Y = VERD_Y + vHeight + 30;   // 评语只剩一句，和大腿之间要留够空
+  const RANK_Y = Math.max(618, THIGH_Y + (thigh ? 84 : 18));
+  const W = 900, H = RANK_Y + 16 + topN * 62 + 150;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const F = (w,s)=> `${w} ${s}px "Microsoft YaHei","PingFang SC",sans-serif`;
+
+  // 背景
+  const bgGrad = g.createLinearGradient(0,0,W,H);
+  bgGrad.addColorStop(0,'#141a10'); bgGrad.addColorStop(.45,'#0a0c11'); bgGrad.addColorStop(1,'#140f1e');
+  g.fillStyle = bgGrad; g.fillRect(0,0,W,H);
+
+  // 光晕
+  let rg = g.createRadialGradient(180,120,0,180,120,520);
+  rg.addColorStop(0,'rgba(163,241,75,.20)'); rg.addColorStop(1,'rgba(163,241,75,0)');
+  g.fillStyle = rg; g.fillRect(0,0,W,H);
+  rg = g.createRadialGradient(760,300,0,760,300,480);
+  rg.addColorStop(0,'rgba(176,107,255,.16)'); rg.addColorStop(1,'rgba(176,107,255,0)');
+  g.fillStyle = rg; g.fillRect(0,0,W,H);
+
+  // 边框
+  g.strokeStyle = '#2a3320'; g.lineWidth = 3; g.strokeRect(22,22,W-44,H-44);
+
+  // 标题（不用 emoji，Canvas 里彩色 emoji 会糊成怪块）
+  g.textAlign = 'center';
+  g.fillStyle = '#a3f14b';
+  g.font = F(700, 62); g.fillText('蛆 王 争 霸 赛', W/2, 130);
+  g.fillStyle = '#4a5a28'; g.font = F(400, 22);
+  g.fillText('— — — — —', W/2, 168);
+  g.fillStyle = '#6f7c8d'; g.font = F(400, 24);
+  g.fillText(state.date + '　·　共 ' + ms.length + ' 局　·　' + arr.length + ' 人参战', W/2, 208);
+
+  // 分割线
+  g.strokeStyle = '#2a3320'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(120, 246); g.lineTo(W-120, 246); g.stroke();
+
+  // 加冕
+  if(champ){
+    g.fillStyle = '#ffcf4d'; g.font = F(400, 30);
+    g.fillText('👑 今 日 蛆 王', W/2, 285);
+    g.save();
+    g.shadowColor = 'rgba(255,207,77,.55)'; g.shadowBlur = 40;
+    g.fillStyle = '#ffcf4d'; g.font = F(800, 88);
+    g.fillText(champ.name, W/2, 385);
+    g.restore();
+    g.fillStyle = '#8b97a8'; g.font = F(400, 25);
+    // K/D/A 已经放进下面评语的数据行了，这里换成档位，避免同一个数字出现两次
+    g.fillText(`局均蛆分 ${champ.avgScore.toFixed(1)}　·　${champ.playedGames} 局${champ.savedTimes?'（免'+champ.savedTimes+'）':''}　·　「${tierOf(champ.avgScore).name}」`, W/2, 432);
+    // 评语：第一句开火，第二句补刀，第三行甩数据当证据
+    if(vInfo){
+      g.textAlign = 'center';
+      vInfo.lines.forEach((ln, i)=>{
+        g.fillStyle = i === 0 ? '#e6ebf2' : '#9fadbf';
+        g.font = F(i === 0 ? 600 : 400, 26);
+        g.fillText(ln, W/2, VERD_Y + i * VLH);
+      });
+      g.fillStyle = '#5f6b7a'; g.font = F(400, 19);
+      g.fillText(vInfo.detail, W/2, VERD_Y + vInfo.lines.length * VLH + 4);
+    }
+    // 大腿（Canvas 里不用彩色 emoji，会糊成色块）
+    if(thigh){
+      g.fillStyle = '#5ce8b0'; g.font = F(600, 26);
+      g.fillText('今日大腿 · ' + thigh.name, W/2, THIGH_Y);
+      g.fillStyle = '#6f7c8d'; g.font = F(400, 20);
+      g.fillText(`局均蛆分 ${thigh.avgScore.toFixed(1)}　·　${thigh.playedGames} 局${thigh.savedTimes?'（免'+thigh.savedTimes+'）':''}　·　大腿 ${thigh.bestTimes} 次`, W/2, THIGH_Y + 32);
+    }
+  } else {
+    g.fillStyle = '#8b97a8'; g.font = F(700, 56);
+    g.fillText('虚 位 以 待', W/2, 350);
+    g.font = F(400, 24);
+    g.fillText(`满 ${MIN_GAMES} 局才产生蛆王（当前 ${ms.length} 局）`, W/2, 400);
+  }
+
+  // 排名
+  const top = arr.slice(0, Math.min(6, arr.length));
+  let y = RANK_Y;
+  g.textAlign = 'left';
+  g.fillStyle = '#4d5766'; g.font = F(400, 20);
+  g.fillText('名次', 100, y); g.fillText('玩家', 190, y);
+  g.textAlign = 'right';
+  g.fillText('局数', 640, y); g.fillText('局均蛆分', 800, y);
+  y += 16;
+  g.strokeStyle = '#1e2532'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(100,y); g.lineTo(W-100,y); g.stroke();
+
+  top.forEach((o,i)=>{
+    y += 62;
+    if(i === 0 && o.qualified){
+      g.fillStyle = 'rgba(255,77,94,.08)';
+      g.fillRect(88, y-36, W-176, 56);
+    }
+    g.textAlign = 'left';
+    g.fillStyle = (i===0&&o.qualified) ? '#ff4d5e' : '#4d5766';
+    g.font = F(700, 30); g.fillText(String(i+1), 104, y);
+    g.fillStyle = (i===0&&o.qualified) ? '#ff8c96' : (o.qualified ? '#e6ebf2' : '#6b7787');
+    g.font = F(600, 32); g.fillText(o.name, 190, y);
+    g.textAlign = 'right';
+    g.fillStyle = '#8b97a8'; g.font = F(400, 26);
+    g.fillText(o.playedGames + ' 局' + (o.savedTimes ? '（免' + o.savedTimes + '）' : ''), 640, y);
+    g.fillStyle = tierOf(o.avgScore).color;
+    g.font = F(700, 34); g.fillText(o.avgScore.toFixed(1), 800, y);
+    g.strokeStyle = '#1a2029';
+    g.beginPath(); g.moveTo(100,y+22); g.lineTo(W-100,y+22); g.stroke();
+  });
+
+  // 脚注
+  g.textAlign = 'center';
+  g.fillStyle = '#3f4857'; g.font = F(400, 19);
+  g.fillText('队内归一化 · 六维蛆度 · 定位加权 · 暴毙惩罚', W/2, H-70);
+  g.fillText('分数仅对同一局内 5 人有效，跨局对比纯属娱乐', W/2, H-42);
+
+  const fname = `蛆王战报_${state.date}.png`;
+  c.toBlob(async b=>{
+    if(!b){ alert('出图失败，画布没内容。'); return; }
+    // 桌面窗口：交给 Python 弹原生保存框。
+    // WebView2 会拦掉异步 a.click() 触发的下载 —— toBlob 的回调已经脱离用户手势，
+    // 浏览器认为不是用户主动下载，直接丢弃，于是"点了没反应"。
+    if(inDesktop() && window.pywebview.api.save_png){
+      try{
+        const dataUrl = await blobToDataURL(b);
+        const r = await window.pywebview.api.save_png(dataUrl, fname);
+        if(r && r.ok) flashLive('✅ 战报图已保存：' + r.path, '#a3f14b');
+        else if(r && !r.cancelled) alert('保存失败：' + (r.error || '未知错误'));
+        return;
+      }catch(e){
+        alert('保存失败：' + (e && e.message ? e.message : e));
+        return;
+      }
+    }
+    // 浏览器模式：常规下载
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = fname;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  }, 'image/png');
+};
+
+/** Blob → dataURL，供后端落盘用 */
+function blobToDataURL(blob){
+  return new Promise((res, rej)=>{
+    const fr = new FileReader();
+    fr.onload = ()=>res(fr.result);
+    fr.onerror = ()=>rej(new Error('图片编码失败'));
+    fr.readAsDataURL(blob);
+  });
+}
+
+/**
+ * 战报评语：先挑最突出的一个毛病开火（两句），再附一行数据佐证。
+ * 只拿数据开涮，不碰人身。
+ * 返回 {lines:[主句,补刀], detail:'数据明细'}
+ */
+function verdict(o){
+  const g = Math.max(1, o.games);
+  const dpg = o.deaths / g;
+  const dmg = o.avgDmgShare * 100;
+  const tk = (o.avgTakenShare || 0) * 100;
+  const kp = (o.avgKpShare || 0) * 100;
+  const eff = o.avgEff;
+  const role = o.mainRole || '战';
+  const kda = `${(o.kills/g).toFixed(1)}/${dpg.toFixed(1)}/${(o.assists/g).toFixed(1)}`;
+  const detail = (o.mainChamp ? o.mainChamp + ' ｜ ' : '')
+    + `场均 ${kda}　输出 ${dmg.toFixed(1)}%　承伤 ${tk.toFixed(1)}%　参团 ${kp.toFixed(1)}%`;
+
+  // 只出一句：挑最突出的那块短板开火。具体数据放在下面 detail 行里当证据。
+  const pick = a => ({lines: [a], detail});
+  if(dpg >= 10) return pick(`场均 ${dpg.toFixed(1)} 次阵亡，复活点该给他摆张折叠床。`);
+  if(dmg < 13) return pick(`输出占比 ${dmg.toFixed(1)}%，全场最高的是「参战意愿」。`);
+  if((role === '坦' || role === '战') && tk < 15) return pick(`顶着${role}位，承伤只有 ${tk.toFixed(1)}%——盾牌纯属装饰。`);
+  if(kp < 15) return pick(`参团率 ${kp.toFixed(1)}%，四条路都走遍了，就是没走进团战。`);
+  if(eff < 0.7) return pick(`经济转化 ${eff.toFixed(2)}，钱一分没少拿，活一点没干。`);
+  if(dpg >= 8) return pick(`场均 ${dpg.toFixed(1)} 次倒地，节奏感很好，方向不太对。`);
+  if(dmg < 19) return pick(`输出占比 ${dmg.toFixed(1)}%，主打一个陪伴，情绪价值拉满。`);
+  return pick(`数据不算最难看，可今天这顶帽子，非你莫属。`);
+}
+
+$('#btnCopyText').onclick = async ()=>{
+  const arr = buildStats().filter(o => o.qualified);   // 只发进了榜的人
+  const msAll = todayMatches();
+  if(!msAll.length) return alert('还没有数据。');
+  const champ = arr.length ? arr[0] : null;
+  let t = `🪱 蛆王争霸赛 ${state.date}\n`;
+  t += champ ? `👑 今日蛆王：${champ.name}（局均蛆分 ${champ.avgScore.toFixed(1)}，${champ.playedGames} 局${champ.savedTimes?'，免'+champ.savedTimes:''}）\n`
+             : `👑 蛆王虚位以待（当前 ${msAll.length} 局，满 ${MIN_GAMES} 局开判）\n`;
+  t += '———————\n';
+  if(!arr.length){
+    t += `还没有人打满 ${MIN_GAMES} 局\n`;
+  }
+  arr.forEach((o,i)=>{
+    t += `${i+1}. ${o.name}　${o.playedGames}局${o.savedTimes?'（免'+o.savedTimes+'）':''}　局均 ${o.avgScore.toFixed(1)}　死亡${o.deaths}\n`;
+  });
+  try{ await navigator.clipboard.writeText(t); alert('已复制到剪贴板，可直接发群里。'); }
+  catch(e){ prompt('复制失败，手动复制：', t); }
+};
+
+/* ===================== 数据管理 ===================== */
+$('#btnExport').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `蛆王数据_${state.date}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+};
+$('#btnImport').onclick = ()=> $('#fileIn').click();
+$('#fileIn').onchange = e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const o = JSON.parse(rd.result);
+      if(!o.matches) throw 0;
+      state = Object.assign({date:todayStr(), matches:[],
+                             cardsByDate:{}, accounts:{}, ignoredOwners:{}, periodExcludes:{},
+                             activeOwner:'', ownerPicked:false}, o);
+      delete state.draft;   // 旧备份里的草稿字段没有界面可编辑了，导入时直接丢掉
+      if(!state.periodExcludes || typeof state.periodExcludes !== 'object') state.periodExcludes = {};
+      migrateMine();          // 旧备份里的局和卡池都要补上账号维度
+      const rescored = refreshScores();   // 备份可能是旧算法算的，按当前口径重来
+      clearUndo();            // 旧存档的撤销副本对不上新 state，别留着埋雷
+      save(); boot();
+      alert(`导入成功，共 ${state.matches.length} 局。`
+            + (rescored ? `\n\n其中 ${rescored} 局已按最新算法重算分数。` : ''));
+    }catch(err){ alert('文件格式不对。'); }
+  };
+  rd.readAsText(f);
+  e.target.value = '';
+};
+$('#btnWipeAll').onclick = ()=>{
+  const who = Object.keys(state.accounts || {}).length;
+  if(!confirm(`清空全部对局数据？\n\n这会连同所有账号（共 ${state.matches.length} 局${who ? '、' + who + ' 个账号' : ''}）一起清掉，不可恢复，建议先导出。`)) return;
+  if(!confirm('真的确定？')) return;
+  state.matches = []; state.cardsByDate = {};
+  state.accounts = {}; state.ignoredOwners = {}; state.periodExcludes = {};
+  state.activeOwner = ''; state.ownerPicked = false; lastAcctKey = '';
+  clearUndo();
+  save(); boot();
+};
+
+function renderHist(){
+  const ms = ownerMatches();                 // 历史也只列当前账号的
+  const byDate = {};
+  ms.forEach(m=>{ byDate[m.date] = (byDate[m.date]||0) + 1; });
+  const keys = Object.keys(byDate).sort().reverse();
+  if(!keys.length){
+    $('#histBox').textContent = '暂无（账号：' + ownerLabel(ownerKey()) + '）';
+    return;
+  }
+  $('#histBox').innerHTML = keys.map(d=>{
+    const sub = ms.filter(m=>m.date===d);
+    return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid #1e2532">
+      <span style="color:${d===state.date?'#a3f14b':'#e6ebf2'}">${d}${d===state.date?'（当前）':''}</span>
+      <span>${sub.length} 局</span></div>`;
+  }).join('');
+}
+
+/* ===================== 删除账号 / 撤销 =====================
+   一个账号在四处留痕：accounts 名册、matches 的 owner、cardsByDate[date][owner]、
+   以及客户端在线时会被 ping 自动重建。四处都得处理，删了才不会「诈尸」。
+   撤销副本单独存一个 localStorage key，不进导出的 JSON。 */
+function readUndo(){
+  try{
+    const o = JSON.parse(localStorage.getItem(UNDO_KEY) || 'null');
+    return (o && typeof o === 'object' && Array.isArray(o.matches)) ? o : null;
+  }catch(e){ return null; }
+}
+function clearUndo(){
+  try{ localStorage.removeItem(UNDO_KEY); }catch(e){}
+}
+function fmtUndoTime(ts){
+  if(!ts) return '时间未知';
+  try{
+    const d = new Date(ts);
+    return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} `
+         + `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }catch(e){ return '时间未知'; }
+}
+function accountStats(k){
+  const ms = state.matches.filter(m => (m.owner || '') === k);
+  const dates = Array.from(new Set(ms.map(m=>m.date))).sort();
+  let cards = 0, cardDates = 0;
+  Object.keys(state.cardsByDate || {}).forEach(d=>{
+    const sub = state.cardsByDate[d] && state.cardsByDate[d][k];
+    if(!sub || typeof sub !== 'object') return;
+    const n = Object.values(sub).reduce((a,b)=>a + (Number(b)||0), 0);
+    if(n > 0){ cards += n; cardDates++; }
+  });
+  return {games: ms.length, dates, cards, cardDates};
+}
+/** 删掉当前账号后，落到「还有局、且没被停用」的账号；实在没有就回未标记 */
+function pickFallbackOwner(){
+  const cnt = {};
+  state.matches.forEach(m=>{
+    const k = m.owner || '';
+    if(isIgnored(k)) return;
+    cnt[k] = (cnt[k] || 0) + 1;
+  });
+  const keys = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
+  return keys.find(k=>k) || keys[0] || '';
+}
+function accountUndoSnapshot(k, label, st){
+  const cards = {};
+  Object.keys(state.cardsByDate || {}).forEach(d=>{
+    const sub = state.cardsByDate[d] && state.cardsByDate[d][k];
+    if(sub && typeof sub === 'object') cards[d] = Object.assign({}, sub);
+  });
+  return {
+    key: k, label, at: Date.now(),
+    account: state.accounts[k] ? Object.assign({}, state.accounts[k]) : null,
+    matches: state.matches.filter(m => (m.owner || '') === k),
+    cards,
+    activeOwner: state.activeOwner, ownerPicked: state.ownerPicked, date: state.date,
+  };
+}
+function refreshAfterAccountChange(){
+  renderStat(); renderBoard(); renderHist();
+  renderAccountManager(); renderPeriod();
+  if($('#dateIn')) $('#dateIn').value = state.date;
+}
+function deleteAccount(k){
+  k = k || '';
+  const st = accountStats(k);
+  const label = k ? ownerLabel(k) : '未标记账号';
+  if(!st.games && !st.cards && !state.accounts[k]){
+    alert(`「${label}」没有任何数据，无需删除。`);
+    return false;
+  }
+  const range = st.dates.length
+    ? `${st.dates.length} 个日期（${st.dates[0]} ~ ${st.dates[st.dates.length-1]}）` : '无';
+  if(!confirm(
+      `删除账号「${label}」？\n\n将一并删除：\n`
+    + `· ${st.games} 局对局记录，${range}\n`
+    + `· ${st.cards} 张免责卡（${st.cardDates} 天）\n`
+    + `· 账号名册条目\n\n`
+    + `删除后该账号暂时停用：客户端仍登录它时不会自动重建、也不会再自动拉取它的对局。\n`
+    + `想重新记录，到「数据 → 账号管理」点「恢复记录」，或直接点一次「从客户端拉取」。\n\n`
+    + `会留一份撤销副本，可在账号管理里一键恢复；换电脑/清缓存前建议先「导出 JSON」留底。`)) return false;
+  if(!confirm(`真的确定删除「${label}」？\n\n删掉的数据只能靠撤销副本恢复。`)) return false;
+
+  const snap = accountUndoSnapshot(k, label, st);
+  let undoOk = true;
+  try{ localStorage.setItem(UNDO_KEY, JSON.stringify(snap)); }
+  catch(e){ undoOk = false; }
+  if(!undoOk && !confirm('存档空间不足，撤销副本没能保存，删了就真找不回来了。\n\n建议先点「导出 JSON」留底。仍要继续删除吗？')) return false;
+
+  const wasCurrent = (ownerKey() === k);
+  const acct = state.accounts[k];
+  state.matches = state.matches.filter(m => (m.owner || '') !== k);
+  Object.keys(state.cardsByDate || {}).forEach(d=>{
+    const pool = state.cardsByDate[d];
+    if(!pool || typeof pool !== 'object') return;
+    delete pool[k];
+    if(!Object.keys(pool).length) delete state.cardsByDate[d];
+  });
+  delete state.accounts[k];
+  // 这个账号在周期页剔除过的人一并清掉，别留着占地方
+  Object.keys(state.periodExcludes || {}).forEach(key=>{
+    if(key.indexOf(k + '|') === 0) delete state.periodExcludes[key];
+  });
+  if(k){
+    // 停用名单记下名字：删掉 accounts 后还得知道这条记录是谁
+    state.ignoredOwners[k] = {
+      name: acct ? acct.name : label, tag: acct ? (acct.tag || '') : '',
+      deletedAt: Date.now(), games: st.games,
+    };
+  }
+  if(lastAcctKey === k) lastAcctKey = '';
+  if(wasCurrent){
+    state.activeOwner = pickFallbackOwner();
+    state.ownerPicked = false;             // 让客户端登录的其它账号能自动接管视图
+    const ms = ownerMatches().filter(m => (m.duration || 0) >= MIN_DURATION);
+    if(ms.length && !ms.some(m => m.date === state.date)){
+      state.date = Array.from(new Set(ms.map(m=>m.date))).sort().reverse()[0];
+    }
+  }
+  save(); refreshAfterAccountChange();
+  flashLive(`🗑 已删除「${label}」及 ${st.games} 局 · 数据页「账号管理」可撤销`, '#ff9a3d');
+  return true;
+}
+function undoDeleteAccount(){
+  const snap = readUndo();
+  if(!snap){ alert('没有可撤销的删除记录。'); return false; }
+  const k = snap.key || '';
+  if(!confirm(`撤销删除：恢复账号「${snap.label || ignoredLabel(k)}」的 `
+            + `${(snap.matches || []).length} 局对局与免责卡？`)) return false;
+  if(snap.account) state.accounts[k] = snap.account;
+  resumeOwner(k);
+  const seen = new Set(state.matches.map(matchFingerprint));
+  (snap.matches || []).forEach(m=>{
+    const fp = matchFingerprint(m);
+    if(!seen.has(fp)){ state.matches.push(m); seen.add(fp); }
+  });
+  Object.keys(snap.cards || {}).forEach(d=>{
+    if(!state.cardsByDate[d] || typeof state.cardsByDate[d] !== 'object') state.cardsByDate[d] = {};
+    const cur = state.cardsByDate[d][k] || {};
+    // 期间新发的卡优先，别把用户后来的操作抹掉
+    state.cardsByDate[d][k] = Object.assign({}, snap.cards[d], cur);
+  });
+  state.activeOwner = k; state.ownerPicked = true;
+  if(snap.date) state.date = snap.date;
+  clearUndo(); save(); refreshAfterAccountChange();
+  flashLive(`↩ 已撤销删除，恢复账号「${snap.label}」`, '#a3f14b');
+  return true;
+}
+/** 只解除停用，不恢复已删对局；撤销副本保留着，随时还能反悔 */
+function reactivateOwner(k){
+  const nm = ignoredLabel(k);
+  if(!confirm(`恢复记录「${nm}」？\n\n`
+    + `· 解除停用：客户端再登录这个号时会重新建号、恢复自动同步\n`
+    + `· 已删掉的对局不会回来（想连数据一起恢复，请点「撤销删除」）\n`
+    + `· 本条停用记录会消失，撤销副本仍保留\n\n确定？`)) return;
+  resumeOwner(k);
+  save(); renderAccountManager(); renderStat();
+  flashLive(`✅ 已解除停用：${nm}`, '#a3f14b');
+}
+/* ===================== 昨日蛆王 → 今天补偿发卡 =====================
+   赌注：当日蛆王第二天请大家喝饮料；作为补偿，第二天给他几张免责卡。
+   放在「今日总榜」里，只在看今天时出现；数量用 −［数字］+ 自己调，不自动发。 */
+function prevDateStr(date){
+  const d = new Date((date || todayStr()) + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  return dateStr(d);
+}
+/** 昨天的蛆王：和当天榜单同一套加冕口径（含昨天的免责卡结算） */
+function yesterdayCrown(){
+  const d = prevDateStr(todayStr());
+  const arr = buildStats(d).filter(o => o.qualified);
+  return {date:d, crown: arr.length ? pickCrown(arr).champ : null};
+}
+function renderYesterdayCrown(){
+  const el = $('#yestCrown');
+  const card = $('#yestCard');
+  if(!el || !card) return;
+  // 只在看「今天」时出现；切到 11 号这种历史日期就整张卡收起，不占地方
+  if(state.date !== todayStr()){
+    card.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  card.style.display = '';
+  const {date, crown} = yesterdayCrown();
+  if(!crown){
+    el.innerHTML = `<div class="hint" style="padding:0 0 10px">${date} 没有产生蛆王（没数据，或没人打满 ${MIN_GAMES} 局），今天没有要补偿的人。</div>`;
+    return;
+  }
+  const cur = cardCount(crown.name, todayStr());
+  el.innerHTML = `<div class="undobar" style="margin-bottom:12px">
+    <span style="flex:1;min-width:200px">
+      🎁 ${date} 的蛆王：<b style="color:var(--txt)">${esc(crown.name)}</b>
+      <span style="color:var(--dim)">（局均 ${crown.avgScore.toFixed(1)} · ${crown.playedGames} 局${crown.savedTimes?'，免'+crown.savedTimes:''}）</span>
+      · 今天买饮料，给他补几张：
+    </span>
+    <span class="cardstep">
+      <button class="cbtn" type="button" data-yest="-1" title="减一张">−</button>
+      <input class="cnum-in" type="number" min="0" max="99" step="1" value="${cur}"
+             data-yest-input title="也可以直接改数字" aria-label="今天给他几张免责卡">
+      <button class="cbtn" type="button" data-yest="1" title="加一张">+</button>
+    </span>
+  </div>`;
+}
+(function bindYesterdayCrown(){
+  const el = $('#yestCrown');
+  if(!el) return;
+  const apply = v => {
+    const {crown} = yesterdayCrown();
+    if(!crown) return null;
+    const n = Math.max(0, Math.min(99, v | 0));
+    setCard(crown.name, todayStr(), n);
+    renderBoard(true);          // 不重建补偿条，免得输入框失焦
+    return {crown, n};
+  };
+  el.addEventListener('click', e=>{
+    const b = e.target.closest && e.target.closest('[data-yest]');
+    if(!b) return;
+    const {crown} = yesterdayCrown();
+    if(!crown) return;
+    const delta = Number(b.dataset.yest) || 0;
+    const r = apply(cardCount(crown.name, todayStr()) + delta);
+    if(r){
+      const inp = el.querySelector('[data-yest-input]');
+      if(inp) inp.value = r.n;          // 数字跟着变，不用重建整条
+      flashLive(`🎁 ${r.crown.name} 今天的免责卡：${r.n} 张`, '#7fd4ff');
+    }
+  });
+  el.addEventListener('change', e=>{
+    const inp = e.target.closest && e.target.closest('[data-yest-input]');
+    if(!inp) return;
+    const r = apply(parseInt(inp.value, 10) || 0);
+    if(r){
+      inp.value = r.n;
+      flashLive(`🎁 ${r.crown.name} 今天的免责卡：${r.n} 张`, '#7fd4ff');
+    }
+  });
+})();
+
+function renderAccountManager(){
+  const undo = readUndo();
+  const ub = $('#undoBar');
+  if(ub){
+    ub.innerHTML = undo ? `<div class="undobar">
+        <span style="flex:1;min-width:220px">↩ 上次删除：<b style="color:var(--txt)">${esc(undo.label || '未标记账号')}</b>
+          · ${(undo.matches || []).length} 局 · ${Object.keys(undo.cards || {}).length} 天免责卡
+          · ${fmtUndoTime(undo.at)}</span>
+        <button class="btn" data-act="undo">↩ 撤销删除</button>
+        <button class="btn ghost" data-act="clearundo">清除副本</button>
+      </div>` : '';
+  }
+  const keys = new Set(Object.keys(state.accounts || {}));
+  state.matches.forEach(m=>keys.add(m.owner || ''));
+  Object.keys(state.cardsByDate || {}).forEach(d=>{
+    Object.keys(state.cardsByDate[d] || {}).forEach(k=>keys.add(k));
+  });
+  keys.forEach(k=>{ if(isIgnored(k)) keys.delete(k); });
+  if(!keys.size) keys.add('');
+  const arr = Array.from(keys).sort((a,b)=>{
+    if(a === '') return 1;
+    if(b === '') return -1;
+    return ownerLabel(a).localeCompare(ownerLabel(b), 'zh');
+  });
+  const list = $('#acctList');
+  if(list){
+    list.innerHTML = arr.map(k=>{
+      const st = accountStats(k);
+      const cur = (ownerKey() === k);
+      const dateTxt = st.dates.length
+        ? `${st.dates.length} 个日期（${st.dates[0]} ~ ${st.dates[st.dates.length-1]}）` : '暂无日期';
+      return `<div class="acctrow">
+        <span class="an">${esc(ownerLabel(k))}${cur ? ' <span style="color:var(--acc);font-size:11px">· 当前</span>' : ''}</span>
+        <span class="am">${st.games} 局 · ${dateTxt} · ${st.cards} 张免责卡</span>
+        <button class="btn danger" data-act="del" data-k="${esc(k)}">🗑 删除账号</button>
+      </div>`;
+    }).join('');
+  }
+  const ig = Object.keys(state.ignoredOwners || {});
+  const il = $('#ignoredList');
+  if(il){
+    il.innerHTML = ig.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+      <b style="font-size:12.5px;color:var(--txt)">已停用（删除后暂不自动记录）</b>
+      ${ig.map(k=>{
+        const a = state.ignoredOwners[k];
+        const hasUndo = undo && (undo.key || '') === k;
+        return `<div class="ignrow">
+          <span class="inm">${esc(ignoredLabel(k))}</span>
+          <span>删除于 ${fmtUndoTime(a.deletedAt)} · 当时 ${a.games || 0} 局</span>
+          <span style="flex:1"></span>
+          ${hasUndo ? '<button class="btn" data-act="undo">↩ 撤销删除</button>' : ''}
+          <button class="btn" data-act="reactivate" data-k="${esc(k)}">🔄 恢复记录</button>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+  }
+}
+(function bindAccountManager(){
+  const handler = e=>{
+    const b = e.target.closest && e.target.closest('[data-act]');
+    if(!b) return;
+    const act = b.dataset.act, k = b.dataset.k || '';
+    if(act === 'del') deleteAccount(k);
+    else if(act === 'undo') undoDeleteAccount();
+    else if(act === 'reactivate') reactivateOwner(k);
+    else if(act === 'clearundo'){
+      if(confirm('清除撤销副本？\n\n清除后已删的对局无法再一键恢复（停用记录仍在）。')){
+        clearUndo(); renderAccountManager();
+      }
+    }
+  };
+  ['undoBar','acctList','ignoredList'].forEach(id=>{
+    const el = $('#' + id);
+    if(el) el.addEventListener('click', handler);
+  });
+  const q = $('#btnDelOwner');
+  if(q) q.addEventListener('click', e=>{
+    // 按钮在 <label> 里，不拦住的话点删除会顺带把账号下拉弹开
+    e.preventDefault(); e.stopPropagation();
+    deleteAccount(ownerKey());
+  });
+})();
+
+/* ===================== Tab ===================== */
+/* 算法说明抽屉：右侧滑出，不切页签 */
+function openRules(){
+  $('#rulesMask').classList.add('on');
+  $('#rulesDrawer').classList.add('on');
+  $('#rulesDrawer').setAttribute('aria-hidden', 'false');
+}
+function closeRules(){
+  $('#rulesMask').classList.remove('on');
+  $('#rulesDrawer').classList.remove('on');
+  $('#rulesDrawer').setAttribute('aria-hidden', 'true');
+}
+$('#btnRules').onclick = openRules;
+$('#btnRulesClose').onclick = closeRules;
+$('#rulesMask').onclick = closeRules;
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && $('#rulesDrawer').classList.contains('on')) closeRules();
+});
+
+$$('nav button').forEach(b=>{
+  b.onclick = ()=>{
+    // 抽屉按钮只开抽屉，不动当前页签和导航高亮
+    if(b.dataset.drawer){ openRules(); return; }
+    $$('nav button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    ['board','period','data'].forEach(t=>{
+      $('#tab-'+t).classList.toggle('hidden', t !== b.dataset.tab);
+    });
+    if(b.dataset.tab === 'board') renderBoard();
+    if(b.dataset.tab === 'period') renderPeriod();
+    if(b.dataset.tab === 'data'){ renderHist(); renderAccountManager(); }
+  };
+});
+$('#dateIn').addEventListener('change', e=>{
+  state.date = e.target.value || todayStr();
+  save(); renderStat(); renderBoard();
+});
+
+/* ===================== 一键拉取（桌面窗口 / 本地服务 双模式） ===================== */
+const RIOT_BTN_HTML = '⚡ 从客户端拉取对局';
+
+/** 是否运行在桌面窗口里（pywebview 注入了 api 对象） */
+function inDesktop(){
+  return !!(window.pywebview && window.pywebview.api);
+}
+
+async function apiCall(method, arg){
+  if(inDesktop()){
+    if(method === 'pull_all') return await window.pywebview.api.pull_all();
+    return await window.pywebview.api[method](arg);
+  }
+  if(location.protocol === 'file:'){
+    throw new Error('当前是本地文件模式，没有后台服务');
+  }
+  const url = method === 'ping' ? '/api/ping'
+            : method === 'dates' ? '/api/dates'
+            : method === 'live' ? '/api/live'
+            : method === 'queues' ? '/api/queues'
+            : method === 'diag' ? '/api/diag'
+            : method === 'pull_all' ? '/api/matches?all=1'
+            : `/api/matches?date=${encodeURIComponent(arg)}&count=30`;
+  const r = await fetch(url, {cache:'no-store'});
+  return await r.json();
+}
+
+/** 客户端里有对局的日期缓存，供两个下拉共用 */
+let clientDateInfo = [];
+
+/** 合并出所有可选日期：今天 + 本地已导入的日期 + 客户端有记录的日期 */
+function collectDates(){
+  const set = new Set();
+  set.add(todayStr());
+  // 只收当前账号的日子：否则切到新号会看到一堆自己没有数据的日期
+  ownerMatches().forEach(m=>{ if(m.date) set.add(m.date); });
+  clientDateInfo.forEach(x=>{ if(x && x.date) set.add(x.date); });
+  if(state.date) set.add(state.date);
+  return Array.from(set).sort().reverse();
+}
+
+/** 重建「今日榜单」顶部那个日期下拉，默认停在下拉对应的 state.date */
+function syncDateOptions(){
+  const sel = $('#dateIn');
+  if(!sel) return;
+  const td = todayStr();
+  const opts = collectDates().map(d=>{
+    const local = ownerMatches().filter(m=>m.date === d && (m.duration||0) >= MIN_DURATION).length;
+    const remote = (clientDateInfo.find(x=>x.date === d) || {}).count || 0;
+    const n = Math.max(local, remote);
+    return `<option value="${d}">${d}${d===td?'（今天）':''}　${n} 局</option>`;
+  }).join('');
+  if(sel.dataset.sig !== opts){
+    sel.innerHTML = opts;
+    sel.dataset.sig = opts;
+  }
+  sel.value = state.date;
+}
+
+/** 一局都没拉到时，把客户端里实际有哪些队列列出来（国服队列号可能不同） */
+async function queueHint(){
+  try{
+    const q = await apiCall('queues');
+    if(!q || !q.ok || !q.queues || !q.queues.length) return '';
+    const lines = q.queues.slice(0, 6).map(x => `${x.name}（队列 ${x.queueId}）× ${x.count} 局`);
+    return `客户端最近 100 局里只有这些队列：\n${lines.join('\n')}`;
+  }catch(e){
+    return '';
+  }
+}
+
+/** 用客户端里有对局的日期填充「拉取日期」下拉，不用手打 */
+async function fillDates(keepValue){
+  const sel = $('#pullDate');
+  if(!sel) return;
+  const cur = keepValue || sel.value;
+  sel.innerHTML = '<option value="">读取中…</option>';
+  try{
+    const d = await apiCall('dates');
+    if(!d.ok || !d.dates || !d.dates.length){
+      clientDateInfo = [];
+      const why = d.ok ? '客户端里没有战绩记录'
+                       : String(d.error || '读取失败').split('\n')[0];
+      sel.innerHTML = `<option value="">（${esc(why)}）</option>`;
+      syncDateOptions();
+      return;
+    }
+    clientDateInfo = d.dates;
+    const td = todayStr();
+    sel.innerHTML = d.dates.map(x=>{
+      const label = x.date + (x.date === td ? '（今天）' : '') + '　' + x.count + ' 局';
+      return `<option value="${x.date}">${label}</option>`;
+    }).join('');
+    if(cur && d.dates.some(x=>x.date === cur)) sel.value = cur;
+    else if(d.dates.some(x=>x.date === td)) sel.value = td;
+    else sel.value = d.dates[0].date;
+    syncDateOptions();
+  }catch(e){
+    clientDateInfo = [];
+    sel.innerHTML = '<option value="">（客户端未连接）</option>';
+    syncDateOptions();
+  }
+}
+
+/* 管理员提示：连不上时最需要它，所以成功/失败两条分支都要刷新 */
+function syncAdminHint(d){
+  const show = (d && d.admin === false && inDesktop());
+  const at = $('#adminTip');
+  if(at) at.style.display = show ? '' : 'none';
+  const ab = $('#btnAdmin');
+  if(ab) ab.style.display = show ? '' : 'none';
+}
+
+/** 认下当前登录账号：没人手动选过的话，默认就停在它名下 */
+function adoptAccount(acct){
+  if(!acct || !acct.name) return;
+  const k = ownerKeyOf(acct);
+  // 删除后的账号还在客户端登录着：别自动重建，但要把话说明白，
+  // 否则用户会以为「又拉不到数据了」。
+  if(isIgnored(k)){
+    lastAcctKey = '';
+    const el0 = $('#riotAcct');
+    if(el0){
+      el0.textContent = '登录中：' + ignoredLabel(k) + '　⚠ 该账号已删除并停用';
+      el0.style.color = '#ffcf4d';
+      el0.title = '到「数据 → 账号管理」点「恢复记录」，或直接点一次「从客户端拉取」，即可重新开始记录。';
+    }
+    return;
+  }
+  const kk = registerAccount(acct);
+  if(!kk) return;
+  syncOwnerOptions();                 // 新登录的账号立刻进「查看账号」下拉
+  // 手动选过账号后程序不会抢切，但换号登录时必须把话说清楚：
+  // 否则客户端明明拉得到数据，用户盯着旧号的空榜会以为「又拉不到了」。
+  const mismatch = !!(state.ownerPicked && state.activeOwner && state.activeOwner !== k);
+  const el = $('#riotAcct');
+  if(el){
+    el.textContent = '登录中：' + ownerLabel(k)
+      + (mismatch ? '　⚠ 当前榜单：' + ownerLabel(state.activeOwner) : '');
+    el.style.color = mismatch ? '#ffcf4d' : '#8fa3b8';
+    el.title = mismatch
+      ? '客户端登录的账号和当前查看的榜单不是同一个。你手动选过账号，程序不会自动抢切；请到榜单页「👤 查看账号」切换。'
+      : '';
+  }
+  lastAcctKey = k;
+  if(state.ownerPicked && state.activeOwner) return;   // 用户自己选过，别抢
+  if(state.activeOwner !== k){ state.activeOwner = k; save(); syncOwnerOptions(); }
+}
+
+async function pingLocal(){
+  const st = $('#riotStat');
+  try{
+    const d = await apiCall('ping');
+    syncAdminHint(d);
+    if(d.ok){
+      st.textContent = inDesktop() ? '客户端已连接 ✓' : '本地服务已连接 ✓';
+      st.style.color = '#a3f14b';
+      adoptAccount(d.account);
+      fillDates();
+      if(typeof refreshLive === 'function') refreshLive();
+      return true;
+    }
+    st.textContent = String(d.error || '未连接').split('\n')[0];
+    st.style.color = '#ff9a3d';
+    return false;
+  }catch(e){
+    st.textContent = inDesktop() ? '未就绪' : '本地服务未启动';
+    st.style.color = '#ff4d5e';
+    return false;
+  }
+}
+
+$('#btnPickDir').onclick = async ()=>{
+  if(!inDesktop()){
+    return alert('手动指定目录只在桌面版可用。\n浏览器模式请改 config.json 里的 lol_dir。');
+  }
+  const r = await window.pywebview.api.choose_dir();
+  if(r && r.ok){
+    alert('已记住目录：\n' + r.dir + '\n\n之后会自动用这个路径。');
+    pingLocal();
+  } else if(r && !r.cancelled){
+    alert('⚠️ ' + (r.error || '未知错误'));
+  }
+};
+
+/* 立即刷新：不弹确认、不挑日期，直接重拉当前这一天的对局 */
+$('#btnRefresh').onclick = async ()=>{
+  const btn = $('#btnRefresh');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '刷新中…';
+  try{
+    const target = state.date || todayStr();
+    const d = await apiCall('pull', target);
+    if(!d || !d.ok){
+      flashLive('刷新失败：' + ((d && d.error) || '未知错误'), '#ff4d5e');
+      return;
+    }
+    const blocks = (d.matches || []).slice().reverse();
+    const owner = ownerFromPull(d);
+    const existing = new Set(state.matches.map(matchFingerprint));
+    const res = ingestBlocks(blocks, target, existing, owner);
+    // 拉的是哪个号就切到哪个号，否则新数据导进去用户看不见
+    if(res.added > 0 && owner !== ownerKey()){
+      state.activeOwner = owner; state.ownerPicked = true;
+    }
+    if(res.added > 0) save();
+    renderStat(); renderBoard(); renderHist();
+    const n = ownerMatches().filter(m=>m.date===target && (m.duration||0)>=MIN_DURATION).length;
+    if(n === 0){
+      const qh = await queueHint();
+      flashLive(`${target} 没有任何对局记录`, '#ff9a3d');
+      alert(`${target} 一局都没拉到。\n\n` + (qh ? qh + '\n\n' : '')
+        + '如果这行里没有海克斯大乱斗，说明国服的队列号和默认的 2400 不一样。');
+    }else if(res.added > 0){
+      flashLive(`🆕 新增 ${res.added} 局 · ${target} 共 ${n} 局`, '#a3f14b');
+    }else{
+      await refreshLive();                 // 没有新局时，看看是不是还在打
+      if(!$('#liveStat').textContent){
+        flashLive(`已刷新：${target} 共 ${n} 局，没有新的`, '#6f7c8d');
+      }
+    }
+  }catch(e){
+    flashLive(inDesktop() ? ('刷新失败：' + e.message)
+      : '连不上本地服务，请用 http://127.0.0.1:8765/ 打开本页', '#ff4d5e');
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+};
+
+/* 诊断：把取数链路每一环摊开，跨服（国服）排查用 */
+$('#btnDiag').onclick = async ()=>{
+  const btn = $('#btnDiag');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '诊断中…';
+  try{
+    const d = await apiCall('diag');
+    if(!d || !d.ok){
+      alert('诊断失败：\n\n' + ((d && d.error) || '未知错误'));
+      return;
+    }
+    alert(d.text);
+  }catch(e){
+    alert('诊断失败：' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = label;
+  }
+};
+
+/* 以管理员身份重启：读别的进程命令行需要管理员权限 */
+$('#btnAdmin').onclick = async ()=>{
+  if(!inDesktop()) return alert('只在桌面版可用。');
+  if(!confirm('将以管理员身份重新启动本程序。\n\n会出现系统的用户账户控制（UAC）提示，点「是」即可。\n当前窗口会自动关闭。')) return;
+  try{
+    const r = await window.pywebview.api.relaunch_admin();
+    if(!r || !r.ok) alert('提权失败：\n\n' + ((r && r.error) || '未知错误'));
+  }catch(e){
+    alert('提权失败：' + e.message);
+  }
+};
+
+$('#btnRiot').onclick = async ()=>{
+  const btn = $('#btnRiot');
+  if(location.protocol === 'file:'){
+    return alert('这个网页是双击打开的，连不上本地服务。\n\n请改成：\n1. 在项目目录运行  python 本地服务.py\n2. 浏览器打开  http://127.0.0.1:8765/');
+  }
+  btn.disabled = true;
+  btn.textContent = '拉取中…（每局约 1~2 秒）';
+  try{
+    const wantDate = $('#pullDate').value;
+    if(!wantDate){
+      alert('还没选日期。先把 League 客户端打开，日期下拉会自动列出有记录的日期。');
+      return;
+    }
+    const d = await apiCall('pull', wantDate);
+    if(!d.ok){ alert('拉取失败：\n\n' + (d.error || '未知错误')); return; }
+    if(!d.matches || !d.matches.length){
+      const qh = await queueHint();
+      alert(`${wantDate} 没有海克斯大乱斗的记录。\n\n`
+        + (qh ? qh + '\n\n' : '')
+        + '确认一下：\n· 那天确实打过这个模式\n· 客户端只保留最近 100 局，太早的日期翻不到\n\n'
+        + '如果上面的队列里根本没有这个模式，点「🔍 诊断」把结果发给维护的人看。');
+      return;
+    }
+
+    const ordered = d.matches.slice().reverse();          // 接口倒序，转成先打的在前
+    const targetDate = wantDate;
+    const list = ordered.map((m,i)=>`第${i+1}局   ${(m.when||'').split(' ')[1]||''}   ${m.queue}   ${m.duration} 分钟   ${m.win?'胜':'负'}`);
+    if(!confirm(`拉到 ${wantDate} 共 ${ordered.length} 局：\n\n${list.join('\n')}\n\n全部导入榜单？（同一天的多局会累加评选）`)) return;
+
+    if(state.date !== targetDate){
+      state.date = targetDate;
+      $('#dateIn').value = targetDate;
+    }
+    const owner = ownerFromPull(d);
+    const existing = new Set(state.matches.map(matchFingerprint));
+    const r0 = ingestBlocks(ordered, targetDate, existing, owner);
+    if(r0.added > 0 && owner !== ownerKey()){
+      state.activeOwner = owner; state.ownerPicked = true;
+    }
+    const ok = r0.added, dup = r0.dup, tooShort = r0.tooShort, patched = r0.patched || 0;
+    save(); renderBoard(); renderStat(); renderHist();
+    document.querySelector('nav button[data-tab="board"]').click();
+    const notes = [];
+    if(dup) notes.push(`跳过 ${dup} 局重复的`);
+    if(patched) notes.push(`补全 ${patched} 局的真实开局时间`);
+    if(tooShort) notes.push(`跳过 ${tooShort} 局时长不足 ${MIN_DURATION} 分钟的重开局`);
+    const tail = notes.length ? '，' + notes.join('，') : '';
+    if(ok === 0){
+      alert(`${targetDate} 没有可导入的对局${tail ? '（' + notes.join('，') + '）' : ''}。`);
+    } else {
+      alert(`已导入 ${ok} 局（${targetDate}）${tail}。\n\n已切到账号「${ownerLabel(owner)}」的榜单。`);
+    }
+  }catch(e){
+    alert(inDesktop()
+      ? '拉取出错：' + e.message
+      : '连不上本地服务。\n\n请确认：\n1. 已在项目目录运行  python 本地服务.py\n2. 网页地址是  http://127.0.0.1:8765/\n\n技术细节：' + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = RIOT_BTN_HTML;
+  }
+};
+
+/* ===================== 一键全量拉取（所有日期一次导入） ===================== */
+const PULL_ALL_HTML = '📦 一键全量拉取（所有日期）';
+
+$('#btnPullAll').onclick = async ()=>{
+  const btn = $('#btnPullAll');
+  if(location.protocol === 'file:'){
+    return alert('这个网页是双击打开的，连不上本地服务。\n\n请改成：\n1. 在项目目录运行  python 本地服务.py\n2. 浏览器打开  http://127.0.0.1:8765/');
+  }
+  if(!confirm(
+      '一键全量拉取：把当前登录账号在客户端里能翻到的全部海克斯大乱斗对局，按日期一次导入。\n\n'
+    + '· 已经导入过的局自动跳过，不会重复\n'
+    + '· 局数多时可能要一两分钟，期间别关窗口\n'
+    + '· 客户端只保留有限历史，翻不到更早的会如实报告\n\n现在开始？')) return;
+
+  btn.disabled = true;
+  btn.textContent = '全量拉取中…（翻页 + 逐局取详情）';
+  try{
+    const d = await apiCall('pull_all');
+    if(!d.ok){ alert('全量拉取失败：\n\n' + (d.error || '未知错误')); return; }
+    const ms = d.matches || [];
+    if(!ms.length){
+      const qh = await queueHint();
+      alert('客户端里没翻到可导入的对局。\n\n' + (qh ? qh + '\n\n' : '')
+        + '确认已登录进大厅，且最近打过海克斯大乱斗；也可以点「🔍 诊断」看取数链路。');
+      return;
+    }
+
+    // 接口是「最新在前」，倒过来让同日内先打的排前面；再按日期分组入库
+    const byDate = new Map();
+    ms.slice().reverse().forEach(m=>{
+      const dt = m.date || todayStr();
+      if(!byDate.has(dt)) byDate.set(dt, []);
+      byDate.get(dt).push(m);
+    });
+    const owner = ownerFromPull(d);
+    const existing = new Set(state.matches.map(matchFingerprint));
+    let added = 0, dup = 0, tooShort = 0, patched = 0;
+    const addedDates = [];
+    byDate.forEach((blocks, dt)=>{
+      const r = ingestBlocks(blocks, dt, existing, owner);
+      added += r.added; dup += r.dup; tooShort += r.tooShort;
+      patched += (r.patched || 0);
+      if(r.added) addedDates.push(dt);
+    });
+    if(added > 0 && owner !== ownerKey()){
+      state.activeOwner = owner; state.ownerPicked = true;
+    }
+    let jumped = '';
+    if(addedDates.length){
+      addedDates.sort();
+      const latest = addedDates[addedDates.length - 1];
+      if(state.date !== latest){ state.date = latest; jumped = latest; }
+    }
+    save(); renderBoard(); renderStat(); renderHist();
+    if($('#dateIn')) $('#dateIn').value = state.date;
+
+    const s = d.stats || {};
+    const hist = s.histTotal != null ? s.histTotal : ms.length;
+    const qtot = s.queueTotal != null ? s.queueTotal : ms.length;
+    const sok = s.ok != null ? s.ok : ms.length;
+    const dates = Array.from(byDate.keys()).sort();
+    const notes = [];
+    if(dup) notes.push(`跳过重复 ${dup} 局`);
+    if(patched) notes.push(`补全 ${patched} 局的真实开局时间`);
+    if(tooShort) notes.push(`跳过 ${tooShort} 局不足 ${MIN_DURATION} 分钟的重开局`);
+    if(s.failed) notes.push(`${s.failed} 局详情没取到`);
+    if(s.truncated) notes.push(`客户端历史超过上限 ${s.limit} 局，更早的没翻`);
+    if(s.retried) notes.push(`客户端战绩分批加载，已自动重取（首轮 ${s.firstCount} 局 → ${hist} 局）`);
+    if(hist < 30 && !s.retried) notes.push('客户端只给出少量历史，若明显偏少可等几秒再点一次');
+    alert(`全量拉取完成：翻到 ${hist} 局摘要 / ${s.pages != null ? s.pages : '?'} 页，`
+      + `其中本模式 ${qtot} 局、成功取详情 ${sok} 局。\n\n`
+      + `覆盖 ${dates.length} 个日期（${dates[0]} ~ ${dates[dates.length-1]}），本次新导入 ${added} 局`
+      + (notes.length ? '；' + notes.join('；') : '') + '。\n\n'
+      + (jumped ? `已切到 ${jumped} 的榜单，` : '当前榜单日期未变，')
+      + '其它日期在顶部日期下拉里切换。');
+    document.querySelector('nav button[data-tab="board"]').click();
+  }catch(e){
+    alert(inDesktop()
+      ? '全量拉取出错：' + e.message
+      : '连不上本地服务。请确认已运行  python 本地服务.py  且网页地址是 http://127.0.0.1:8765/\n\n技术细节：' + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = PULL_ALL_HTML;
+  }
+};
+
+/* ===================== 状态提示（只在点按钮时查一次，不做后台轮询） ===================== */
+let liveTimer = null;
+
+function flashLive(text, color, sticky){
+  const el = $('#liveStat');
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = color || '#a3f14b';
+  clearTimeout(liveTimer);
+  if(!sticky) liveTimer = setTimeout(()=>{ el.textContent = ''; }, 12000);
+}
+
+/** 显示「对局进行中 / 刚结束」，由 refreshLive() 拉一次阶段后调用 */
+window.__setPhase = function(ph){
+  if(ph === 'InProgress'){
+    flashLive('🎮 对局进行中，打完再点刷新', '#7fd4ff', true);
+  }else if(ph === 'PreEndOfGame' || ph === 'EndOfGame' || ph === 'WaitingForStats'){
+    flashLive('🏁 刚打完，正在结算，稍等几秒再刷新', '#ffcf4d', true);
+  }else{
+    flashLive('', '', true);
+  }
+};
+
+/** 只在启动、点刷新、切回窗口时各查一次，不做定时轮询 */
+async function refreshLive(){
+  try{
+    const d = await apiCall('live');
+    if(d && d.ok) window.__setPhase(d.phase);
+  }catch(e){ /* 客户端没开就算了 */ }
+}
+
+/* ===================== 切回窗口时补一次（不做定时轮询，空闲不耗 CPU） ===================== */
+let autoSyncBusy = false;
+
+async function autoSyncTick(){
+  if(!inDesktop() || autoSyncBusy) return;
+  if(document.hidden) return;
+  autoSyncBusy = true;
+  const today = todayStr();
+  try{
+    const d = await apiCall('dates');
+    if(!d || !d.ok || !d.dates) return;
+    // 先认人：客户端登录的可能是另一个账号，新局要归到它自己名下
+    const acct = d.account || null;
+    const acctKey = ownerKeyOf(acct);
+    if(syncBlockedByIgnore(acct)) return;      // 已删除并停用的号，静默同步别把它建回来
+    if(acct) registerAccount(acct);
+    const viewing = acctKey || ownerKey();
+    const row = d.dates.find(x => x.date === today);
+    const remote = row ? row.count : 0;
+    const local = state.matches.filter(m => (m.owner || '') === viewing && m.date === today).length;
+    if(remote <= local) return;              // 没有新局
+
+    const r = await apiCall('pull', today);
+    if(!r || !r.ok || !r.matches || !r.matches.length) return;
+    const owner = ownerFromPull(r) || viewing;
+    const existing = new Set(state.matches.map(matchFingerprint));
+    const res = ingestBlocks(r.matches.slice().reverse(), today, existing, owner);
+    if(res.added > 0){
+      save(); renderStat(); renderBoard(); renderHist();
+      // 静默同步不抢视图：用户可能正在翻别的账号的旧账
+      const tag = (owner === ownerKey()) ? '' : `（${ownerLabel(owner)}）`;
+      flashLive(`⚡ 已补上 ${res.added} 局${tag} · 该账号今日共 ${state.matches.filter(m=>(m.owner||'')===owner && m.date===today && (m.duration||0)>=MIN_DURATION).length} 局`);
+      setTimeout(()=>pingLocal(), 6000);
+    }
+  }catch(e){
+    /* 客户端没开就安静跳过，不打扰 */
+  }finally{
+    autoSyncBusy = false;
+  }
+}
+
+function startAutoSync(){
+  // 只在「切回窗口」这一刻查一次：空闲时零请求，不占 CPU
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) autoSyncTick(); });
+  window.addEventListener('focus', autoSyncTick);
+  setTimeout(autoSyncTick, 4000);         // 启动后先对一次
+}
+
+/* ===================== 启动 ===================== */
+const DESKTOP_HINT = '需要 League 客户端开着，数据直接从客户端读取，不用开任何命令行窗口。' +
+                     '国服（WeGame/腾讯服）和外服都支持，安装目录会自动识别。';
+const BROWSER_HINT = '需要 League 客户端开着，并在项目目录运行 <code>python 本地服务.py</code>，' +
+                     '再用 <code>http://127.0.0.1:8765/</code> 打开本页。';
+
+function applyModeUI(){
+  const hint = $('#riotHint');
+  if(!hint) return;
+  hint.innerHTML = inDesktop() ? DESKTOP_HINT : BROWSER_HINT;
+}
+
+function boot(){
+  syncDateOptions();
+  fillDates();
+  applyModeUI();
+  // 桌面窗口里 pywebview 的接口是异步注入的，等它好了再来一遍
+  if(window.pywebview && window.pywebview.api){
+    applyModeUI();
+  }
+  window.addEventListener('pywebviewready', ()=>{
+    applyModeUI();
+    pingLocal();
+  });
+  renderBoard(); renderStat(); renderHist();
+  renderAccountManager();
+  pingLocal();
+  startAutoSync();
+  const notes = [];
+  if(window.__DEDUP_REMOVED__) notes.push(`${window.__DEDUP_REMOVED__} 局重复记录`);
+  if(window.__SHORT_REMOVED__) notes.push(`${window.__SHORT_REMOVED__} 局时长不足 ${MIN_DURATION} 分钟的重开局`);
+  if(notes.length){
+    setTimeout(()=>{
+      alert(`已自动清理：${notes.join('、')}。`);
+      window.__DEDUP_REMOVED__ = 0;
+      window.__SHORT_REMOVED__ = 0;
+    }, 400);
+  }
+  // 升级前那批没记账号的对局单独归组，提醒一句，免得以为数据丢了
+  if(window.__RESCORED__){
+    setTimeout(()=>flashLive(
+      `⚙️ 算法更新，已重算 ${window.__RESCORED__} 局的分数`, '#a3f14b'), 900);
+  }
+  const legacy = state.matches.filter(m => (m.owner || '') === '');
+  if(legacy.length){
+    setTimeout(()=>flashLive(
+      `另有 ${legacy.length} 局旧数据没记账号，可在「👤 查看账号」里切过去看`, '#ff9a3d'), 2200);
+  }
+}
+load();
+
+// 清理历史遗留的重复导入（早期版本没做去重，重复点按钮会叠加）
+(function dedupeHistory(){
+  const seen = new Set();
+  const keep = [];
+  let removed = 0;
+  for(const m of state.matches){
+    const fp = matchFingerprint(m);
+    if(seen.has(fp)){ removed++; continue; }
+    seen.add(fp);
+    keep.push(m);
+  }
+  if(removed > 0){
+    state.matches = keep;
+    save();
+    window.__DEDUP_REMOVED__ = removed;
+  }
+})();
+
+// 清理时长不足的重开局
+(function dropShortMatches(){
+  const before = state.matches.length;
+  state.matches = state.matches.filter(m => (m.duration || 0) >= MIN_DURATION);
+  const n = before - state.matches.length;
+  if(n > 0){
+    save();
+    window.__SHORT_REMOVED__ = n;
+  }
+})();
+
+// 评分口径变了就整套重算。用「算法指纹」判断，而不是手写版本号——
+// 之前用 _v 数字，改权重时忘了加一版，旧对局就一直挂着老分数。
+window.__RESCORED__ = refreshScores();
+
+boot();
+</script>
+</body>
+</html>

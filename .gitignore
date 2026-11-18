@@ -1,0 +1,33 @@
+# 真实数据 / 隐私（绝不入库）
+*.json
+!LICENSES/*.json
+*.ldb
+*.log
+*数据*
+edge_quwang*
+恢复候选*
+
+# 打包产物与缓存
+build/
+dist/
+*.spec
+*.exe
+# 随仓库附带的成品 exe，便于不装 Python 的用户直接运行
+!蛆王争霸赛.exe
+__pycache__/
+*.py[cod]
+
+# 过程文件与备份
+_过程文件/
+_过程/
+_*/
+*.zip
+*.bak
+*.png
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
