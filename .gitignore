@@ -24,6 +24,7 @@ _*/
 *.zip
 *.bak
 *.png
+!screenshots/*.png
 
 # 编辑器 / 系统
 .vscode/
